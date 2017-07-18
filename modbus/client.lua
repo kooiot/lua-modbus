@@ -30,28 +30,32 @@ end
 --len, length
 --
 function class:request (req) 
+	local func = req.func
+	if type(req.func) == 'string' then
+		req.func = cmd[func]
+	end
 	p = pdu[cmd[tonumber(req.func)]](req)
 	if not p then
 		return nil
 	end
 
-	local _, apdu_raw = self.apdu.encode(p, req)
+	local _, apdu_raw = self._apdu.encode(p, req)
 
 	--- write to pipe
 	-- fiber.await(self.internal.write(apdu_raw))
-	self.stream.send(apdu_raw)
+	self._stream.send(apdu_raw)
 
 	--local raw = fiber.await(self.internal.read())
-	local raw = self.stream.read(req, packet_check(self.apdu, req), 1000)
+	local raw = self._stream.read(req, packet_check(self._apdu, req), 1000)
 	if not raw then
 		return nil, 'Packet timeout'
 	end
 
-	local unit, pdu_raw = self.apdu.decode(raw)
+	local unit, pdu_raw = self._apdu.decode(raw)
 	return pdu_raw, unit
 end
 
 return function (stream, apdu)
-	return setmetatable({stream = stream, apdu = apdu}, {__index=class})
+	return setmetatable({_stream = stream, _apdu = apdu}, {__index=class})
 end
 
