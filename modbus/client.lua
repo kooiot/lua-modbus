@@ -4,9 +4,10 @@ local cmd = require "modbus.code"
 
 local class = {}
 
-local function packet_check(apdu, port_config)
-	return function(msg, t, port_config)
-		return apdu.check(msg, t, port_config)
+local function packet_check(apdu, req)
+	local req = req
+	return function(msg)
+		return apdu.check(msg, req)
 	end
 end
 
@@ -21,21 +22,27 @@ local function hex_raw(raw)
 	end 
 end
 
+-- Request {
 --ecm, error checking methods
-function class:request (t, port_config, ecm) 
-	p = pdu[cmd[tonumber(t.tags.request.func)]](t)
+--unit, unit address
+--func, modbus function code
+--addr, start address
+--len, length
+--
+function class:request (req) 
+	p = pdu[cmd[tonumber(req.func)]](req)
 	if not p then
 		return nil
 	end
 
-	local _, apdu_raw = self.apdu.encode(p, port_config)
+	local _, apdu_raw = self.apdu.encode(p, req)
 
 	--- write to pipe
 	-- fiber.await(self.internal.write(apdu_raw))
 	self.stream.send(apdu_raw)
 
 	--local raw = fiber.await(self.internal.read())
-	local raw = self.stream.read(t, packet_check(self.apdu, port_config), 1000)
+	local raw = self.stream.read(req, packet_check(self.apdu, req), 1000)
 	if not raw then
 		return nil, 'Packet timeout'
 	end
@@ -45,6 +52,6 @@ function class:request (t, port_config, ecm)
 end
 
 return function (stream, apdu)
-	return setmetatable({stream = stream, apdu = apdu, requests = {}, stop = false}, {__index=class})
+	return setmetatable({stream = stream, apdu = apdu}, {__index=class})
 end
 

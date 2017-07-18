@@ -26,12 +26,12 @@ local function create_header(transaction, length, unit)
 	return data
 end
 
-function _M.encode(pdu, port_config) --unit, checkmode)
+function _M.encode(pdu, req)
 	if not pdu then
 		return nil, 'no pdu object'
 	end
 	transaction = transaction or 0
-	unit = port_config.unit or 1
+	unit = req.unit or 1
 	local length = string.len(pdu)
 	adu = create_header(transaction, length + 1, unit) .. pdu
 	return true, adu 
@@ -54,15 +54,15 @@ local function hex_raw(raw)
 end
 
 
-function _M.check(buf, t, port_config)
+function _M.check(buf, req)
 	if string.len(buf) < 7 then
 		return false
 	end
 
 	local adu = nil
 	local transaction = transaction or 0
-	local unit = encode.uint8(port_config.unit)
-	local fc = encode.uint8(t.tags.request.func)
+	local unit = encode.uint8(req.unit)
+	local fc = encode.uint8(req.func)
 	local hv, lv = encode.uint16(transaction)
 	transaction = hv .. lv
 	hv, lv = encode.uint16(0)
