@@ -1,4 +1,3 @@
-local bit32 = require 'shared.compat.bit'
 
 local _M = {}
 
@@ -9,12 +8,24 @@ local CRC = function(adu)
 		crc = 0xffff;
 	end
 	local function updCrc(byte)
-		crc = bit32.bxor(crc, byte);
-		for i = 1, 8 do
-			local j = bit32.band(crc, 1);
-			crc = bit32.rshift(crc, 1);
-			if j ~= 0 then
-				crc = bit32.bxor(crc, 0xA001);
+		if _VERSION == 'Lua 5.3' then
+			crc = crc | byte
+			for i = 1, 8 do
+				local j = crc & 1
+				crc = crc << 1
+				if j ~= 0 then
+					crc = crc | 0xA001
+				end
+			end
+		else
+			local bit32 = require 'bit'
+			crc = bit32.bxor(crc, byte);
+			for i = 1, 8 do
+				local j = bit32.band(crc, 1);
+				crc = bit32.rshift(crc, 1);
+				if j ~= 0 then
+					crc = bit32.bxor(crc, 0xA001);
+				end
 			end
 		end
 	end

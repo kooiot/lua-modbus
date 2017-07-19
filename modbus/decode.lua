@@ -1,54 +1,57 @@
 -- modbus decode functions
 --
-local bit32 = require 'shared.compat.bit'
 
 local _M = {}
 
-_M.int8 = function (data)
-	val = string.byte(data)
+_M.int8 = function (data, index)
+	local val = string.byte(data, index or 1)
 	val = ((val + 128) % 256) - 128
 	return val
 end
 
-_M.uint8 = function (data)
-	return string.byte(data)
+_M.uint8 = function (data, index)
+	return string.byte(data, index or 1)
 end
 
-_M.int16 = function (data, option)
-	hv = string.byte(data)
-	lv = string.byte(data, 2)
-	val = hv * 256 + lv
+_M.int16 = function (data, index)
+	local val = _M.uint16(data, index)
 	val = ((val + 32768) % 65536) - 32768
 	return val
 end
 
-_M.uint16 = function (data, option)
-	hv = string.byte(data)
-	hl = string.byte(data, 2)
-	val = hv * 256 + hl
-	return val
+_M.uint16 = function (data, index)
+	local index = index or 1
+	local hv = string.byte(data, index)
+	local lv = string.byte(data, index + 1)
+	return hv * 256 + lv
 end
 
-_M.int32 = function (data)
-	val = _M.uint32(data)
+_M.int32 = function (data, index)
+	local val = _M.uint32(data, index)
 	val = ((val + 1073741824) % 2147483648) - 1073741824
 	return val
 end
 
-_M.uint32 = function (data)
-	hv = _M.uint16(data)
-	hl = _M.uint16(string.sub(data, 2, 2))
-	return hv * 65536 + hl
+_M.uint32 = function (data, index)
+	local index = index or 1
+	local hv = _M.uint16(data, index)
+	local lv = _M.uint16(data, index + 2)
+	return hv * 65536 + lv 
 end
 
-_M.string = function (data, len)
-	return string.sub(data, 1, len)
+_M.string = function (data, index, len)
+	return string.sub(data, index, len)
 end
 
 _M.bit = function (raw, addr, index)
-	val = math.ceil(index / 8)
-	data = decode.uint8(raw:sub(val, val))
-	return bit32.band(1, bit32.rshift(data, index % 8))
+	local val = math.ceil(index / 8)
+	local data = decode.uint8(raw:sub(val, val))
+	if _VERSION == 'Lua 5.3'then
+		return (1 & (data >> (index % 8)))
+	else
+		local bit32 = require 'bit'
+		return bit32.band(1, bit32.rshift(data, index % 8))
+	end
 end
 
 _M.byte = function (raw, addr, index)

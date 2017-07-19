@@ -13,7 +13,7 @@ function _M.encode(pdu, req)
 	if not pdu then
 		return nil, 'no pdu object'
 	end
-	unit = req.unit or 1
+	local unit = req.unit or 1
 	local adu = create_header(unit) .. pdu
 	local checknum = ECM.check(adu, req.ecm)
 	return true, adu .. checknum 
@@ -23,18 +23,6 @@ function _M.decode(raw)
 	local unit = decode.uint8(raw:sub(1, 1))
 	return unit, raw:sub(2, -3)
 end
-
-local function hex_raw(raw)
-	if not raw then
-		return ""
-	end 
-	if (string.len(raw) > 1) then
-		return string.format("%02X ", string.byte(raw:sub(1, 1)))..hex_raw(raw:sub(2))
-	else
-		return string.format("%02X ", string.byte(raw:sub(1, 1)))
-	end 
-end
-
 
 function _M.check(buf, req)
 	if string.len(buf) < 4 then

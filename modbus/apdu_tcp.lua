@@ -42,18 +42,6 @@ function _M.decode(raw)
 	return unit, raw:sub(2)
 end
 
-local function hex_raw(raw)
-	if not raw then
-		return ""
-	end 
-	if (string.len(raw) > 1) then
-		return string.format("%02X ", string.byte(raw:sub(1, 1)))..hex_raw(raw:sub(2))
-	else
-		return string.format("%02X ", string.byte(raw:sub(1, 1)))
-	end 
-end
-
-
 function _M.check(buf, req)
 	if string.len(buf) < 7 then
 		return false
