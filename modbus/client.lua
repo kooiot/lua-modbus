@@ -34,7 +34,7 @@ function class:request (req)
 	--- write to pipe
 	self._stream.send(apdu_raw)
 
-	local raw = self._stream.read(req, packet_check(self._apdu, req), 1000)
+	local raw = self._stream.read(packet_check(self._apdu, req), 1000)
 	if not raw then
 		return nil, 'Packet timeout'
 	end
