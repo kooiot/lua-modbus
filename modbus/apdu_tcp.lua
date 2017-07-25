@@ -34,7 +34,7 @@ function _M.encode(pdu, req)
 	unit = req.unit or 1
 	local length = string.len(pdu)
 	adu = create_header(transaction, length + 1, unit) .. pdu
-	return true, adu 
+	return adu 
 end
 
 function _M.decode(raw)
@@ -42,9 +42,11 @@ function _M.decode(raw)
 	return unit, raw:sub(2)
 end
 
+_M.min_packet_len = 8
+
 function _M.check(buf, req)
 	if string.len(buf) < 7 then
-		return false
+		return nil, buf, 7 - string.len(buf)
 	end
 
 	local adu = nil
@@ -58,32 +60,30 @@ function _M.check(buf, req)
 	local data = transaction .. protocolId
 	while string.len(buf) > 7 do
 		local b, e = buf:find(data)
-		if e then
+		if b and e then
 			local raw_fc = buf:sub(e + 4, e + 4)
 			if decode.uint8(fc) == decode.uint8(raw_fc) then
 				--print(decode.uint8(fc), decode.uint8(raw_fc))
 				local len = decode.uint16(buf:sub(e + 1, e + 2))
 				if string.len(buf) < len + 6 then
-					return nil, b, e
+					return nil, buf, len + 6 - string.len(buf)
 				end
 				adu = buf:sub(e + 3, e + 3 + len)
-				return adu
+				return adu, buf:sub(len + 6 + 1)
 			else
 				if (decode.uint8(buf:sub(e + 4, e + 4)) == decode.uint8(fc) + 0x80) then
 					--TODO exception
 					print("-----------exception---------------")
 				else
-				--	print("aaaaaaaa", hex_raw(buf), "len = ", string.len(buf))
 					buf = buf:sub(b + 1)
-				--	print("aaaaaaaa", hex_raw(buf), "len = ", string.len(buf))
 				end
 			end
 		else
-			return nil
+			buf = buf:sub(2)
 		end
 	end
 
-	return nil
+	return nil, buf, 1
 end
 
 return _M

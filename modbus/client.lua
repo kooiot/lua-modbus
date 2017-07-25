@@ -17,10 +17,9 @@ end
 --addr, start address
 --len, length
 --
-function class:request (req) 
-	local func = req.func
+function class:request (req, timeout) 
 	if type(req.func) == 'string' then
-		req.func = code[func]
+		req.func = code[req.func]
 	end
 	req.unit = req.unit or self._unit
 	req.ecm = req.ecm or "1"
@@ -29,14 +28,14 @@ function class:request (req)
 		return nil
 	end
 
-	local _, apdu_raw = self._apdu.encode(p, req)
+	local apdu_raw = assert(self._apdu.encode(p, req))
 
 	--- write to pipe
 	self._stream.send(apdu_raw)
 
-	local raw = self._stream.read(packet_check(self._apdu, req), 1000)
+	local raw, err = self._stream.read(packet_check(self._apdu, req), timeout)
 	if not raw then
-		return nil, 'Packet timeout'
+		return nil, err or "unknown"
 	end
 
 	local unit, pdu_raw = self._apdu.decode(raw)
