@@ -1,7 +1,7 @@
 
 local encode = require 'modbus.encode'
 local decode = require 'modbus.decode'
-local ECM = require "modbus.ErrorCheckingMethods"
+local ecm = require "modbus.ecm"
 local _M = {}
 
 local function create_header(unit)
@@ -15,7 +15,7 @@ function _M.encode(pdu, req)
 	end
 	local unit = req.unit or 1
 	local adu = create_header(unit) .. pdu
-	local checknum = ECM.check(adu, req.ecm)
+	local checknum = ecm.check(adu, req.ecm)
 	return adu .. checknum 
 end
 
@@ -45,7 +45,7 @@ function _M.check(buf, req)
 				end
 
 				adu = buf:sub(b, e + len + 2)
-				local checknum = ECM.check(adu:sub(1, -3), req.ecm)
+				local checknum = ecm.check(adu:sub(1, -3), req.ecm)
 				if checknum == adu:sub(-2, -1) then
 					return adu, buf:sub(e + len + 2 + 1)
 				end
@@ -60,7 +60,7 @@ function _M.check(buf, req)
 				end
 
 				adu = buf:sub(b, e + len + 2)
-				local checknum = ECM.check(adu:sub(1, -3), req.ecm)
+				local checknum = ecm.check(adu:sub(1, -3), req.ecm)
 				if checknum == adu:sub(-2, -1) then
 					return adu, buf:sub( e + len + 2 + 1)
 				end
@@ -76,7 +76,7 @@ function _M.check(buf, req)
 				end
 
 				adu = buf:sub(b, e + 4)
-				local checknum = ECM.check(adu:sub(1, -3), req.ecm)
+				local checknum = ecm.check(adu:sub(1, -3), req.ecm)
 				if checknum == adu:sub(-2, -1) then
 					return adu, buf:sub(e + 4 + 1)
 				end
@@ -94,7 +94,7 @@ function _M.check(buf, req)
 				end
 
 				adu = buf:sub(b, e + 2)
-				local checknum = ECM.check(adu:sub(1, -3), req.ecm)
+				local checknum = ecm.check(adu:sub(1, -3), req.ecm)
 				if checknum == adu:sub(-2, -1) then
 					return adu, buf:sub(e + 2 + 1)
 				end

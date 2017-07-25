@@ -83,7 +83,7 @@ end
 
 function client:request(req, timeout)
 	local cb = self._data_cb
-	local msg = compose_message(req, self._unit, "1")
+	local msg = compose_message(req, self._unit, "crc")
 	if cb then
 		cb("OUT", msg)
 	end

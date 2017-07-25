@@ -22,7 +22,7 @@ function class:request (req, timeout)
 		req.func = code[req.func]
 	end
 	req.unit = req.unit or self._unit
-	req.ecm = req.ecm or "1"
+	req.ecm = req.ecm or "crc"
 	p = pdu[code[tonumber(req.func)]](req)
 	if not p then
 		return nil
