@@ -1,3 +1,4 @@
+local encode = require 'modbus.encode'
 
 local _M = {}
 
@@ -9,12 +10,12 @@ local CRC = function(adu)
 	end
 	local function updCrc(byte)
 		if _VERSION == 'Lua 5.3' then
-			crc = crc | byte
+			crc = crc ~ byte
 			for i = 1, 8 do
 				local j = crc & 1
-				crc = crc << 1
+				crc = crc >> 1
 				if j ~= 0 then
-					crc = crc | 0xA001
+					crc = crc ~ 0xA001
 				end
 			end
 		else
@@ -51,6 +52,7 @@ local LRC = function(adu)
 end
 
 _M.check = function(adu, checkmode) 
+	local checkmode = checkmode or "crc"
 	local checknum = 0
 	if checkmode == "crc" then
 		checknum = CRC(adu)
@@ -60,9 +62,8 @@ _M.check = function(adu, checkmode)
 		checknum = LRC(adu)
 		hv, lv = encode.uint16(checknum)
 		return hv .. lv
-	else
-		return ""
 	end
+	assert(false, "checkmode not supported", checkmode)
 end
 
 return _M

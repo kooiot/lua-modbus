@@ -1,8 +1,6 @@
 local skynet = require 'skynet'
-local socketchannel = require 'skynet.socketchannel'
 local pdu = require 'modbus.pdu'
 local code = require "modbus.code"
-local apdu_tcp = require 'modbus.apdu_tcp'
 local class = require 'middleclass'
 
 local client = class("Modbus_Skynet_Client")
@@ -14,19 +12,18 @@ local function packet_check(apdu, req)
 	end
 end
 
-local function compose_message(req, unit, ecm)
+local function compose_message(apdu, req, unit)
 	if type(req.func) == 'string' then
 		req.func = code[req.func]
 	end
 	req.unit = req.unit or unit
-	req.ecm = req.ecm or ecm
 
 	p = pdu[code[tonumber(req.func)]](req)
 	if not p then
 		return nil
 	end
 
-	local apdu_raw = assert(apdu_tcp.encode(p, req))
+	local apdu_raw = assert(apdu.encode(p, req))
 	return apdu_raw
 end
 
@@ -62,15 +59,11 @@ local function make_read_response(apdu, req, timeout, cb)
 	end
 end
 
-function client:initialize(host, port, unit)
-	local channel = socketchannel.channel({
-		host = host,
-		port = port or 502,
-		nodelay = true,
-	})
+function client:initialize(sc, opt, apdu, unit)
+	local channel = sc.channel(opt)
 	self._chn = channel
 	self._unit = unit
-	self._apdu = apdu_tcp
+	self._apdu = apdu
 end
 
 function client:connect(only_once)
@@ -83,7 +76,7 @@ end
 
 function client:request(req, timeout)
 	local cb = self._data_cb
-	local msg = compose_message(req, self._unit, "crc")
+	local msg = compose_message(self._apdu, req, self._unit)
 	if cb then
 		cb("OUT", msg)
 	end
