@@ -35,8 +35,13 @@ local function make_read_response(apdu, req, timeout, cb)
 		local need_len = apdu.min_packet_len
 		local check = packet_check(apdu, req)
 
-		while timeout > (skynet.now() - start) * 10 do
-			local str, err = sock:read(need_len)
+		while true do
+			local t = timeout - ((skynet.now() - start) * 10)
+			if t <= 0 then
+				break
+			end
+
+			local str, err = sock:read(need_len, t)
 			if not str then
 				return false, err
 			end
