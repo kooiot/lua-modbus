@@ -42,6 +42,7 @@ function class:request (req, timeout)
 end
 
 return function (stream, apdu, unit)
+	local unit = unit or 1
 	return setmetatable({_stream = stream, _apdu = apdu, _unit=unit}, {__index=class})
 end
 

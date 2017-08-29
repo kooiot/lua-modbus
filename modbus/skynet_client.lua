@@ -67,7 +67,7 @@ end
 function client:initialize(sc, opt, apdu, unit)
 	local channel = sc.channel(opt)
 	self._chn = channel
-	self._unit = unit
+	self._unit = unit or 1
 	self._apdu = apdu
 end
 

@@ -31,7 +31,6 @@ function _M.encode(pdu, req)
 		return nil, 'no pdu object'
 	end
 	transaction = transaction or 0
-	unit = req.unit or 1
 	local length = string.len(pdu)
 	adu = create_header(transaction, length + 1, unit) .. pdu
 	return adu 

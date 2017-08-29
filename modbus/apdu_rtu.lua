@@ -13,7 +13,6 @@ function _M.encode(pdu, req)
 	if not pdu then
 		return nil, 'no pdu object'
 	end
-	local unit = req.unit or 1
 	local adu = create_header(unit) .. pdu
 	local checknum = ecm.check(adu, req.ecm)
 	return adu .. checknum 
