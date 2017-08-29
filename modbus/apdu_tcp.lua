@@ -32,7 +32,7 @@ function _M.encode(pdu, req)
 	end
 	transaction = transaction or 0
 	local length = string.len(pdu)
-	adu = create_header(transaction, length + 1, unit) .. pdu
+	adu = create_header(transaction, length + 1, req.unit) .. pdu
 	return adu 
 end
 
