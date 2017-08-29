@@ -3,6 +3,8 @@ local encode = require 'modbus.encode'
 local decode = require 'modbus.decode'
 local _M = {}
 
+local transaction_map = {}
+
 local function hex_raw(raw)
 	if not raw then
 		return ""
@@ -30,7 +32,9 @@ function _M.encode(pdu, req)
 	if not pdu then
 		return nil, 'no pdu object'
 	end
-	transaction = transaction or 0
+	local transaction = req.transaction or (transaction_map[req.unit] or 0) + 1
+	transaction_map[req.unit] = transaction
+	req.transaction = transaction
 	local length = string.len(pdu)
 	adu = create_header(transaction, length + 1, req.unit) .. pdu
 	return adu 
@@ -49,7 +53,7 @@ function _M.check(buf, req)
 	end
 
 	local adu = nil
-	local transaction = transaction or 0
+	local transaction = req.transaction or transaction_map[req.unit]
 	local unit = encode.uint8(req.unit)
 	local fc = encode.uint8(req.func)
 	local hv, lv = encode.uint16(transaction)
@@ -74,7 +78,7 @@ function _M.check(buf, req)
 					--TODO exception
 					print("-----------exception---------------")
 				else
-					buf = buf:sub(b + 1)
+					buf = buf:sub(b)
 				end
 			end
 		else
@@ -82,7 +86,7 @@ function _M.check(buf, req)
 		end
 	end
 
-	return nil, buf, 1
+	return nil, buf, 8 - string.len(buf)
 end
 
 return _M
