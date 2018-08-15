@@ -1,5 +1,6 @@
 -- modbus decode functions
 --
+--local basexx = require 'basexx'
 
 local _M = {}
 
@@ -43,9 +44,11 @@ _M.string = function (data, index, len)
 	return string.sub(data, index, len)
 end
 
-_M.bit = function (raw, addr, index)
-	local val = math.ceil(index / 8)
-	local data = decode.uint8(raw:sub(val, val))
+_M.bit = function (raw, index)
+	-- Keep consistency for index start from 1 as string.sub
+	local index = (index or 1) - 1
+	local val = math.ceil((index + 1) / 8)
+	local data = _M.uint8(raw:sub(val, val))
 	if _VERSION == 'Lua 5.3'then
 		return (1 & (data >> (index % 8)))
 	else
@@ -54,12 +57,8 @@ _M.bit = function (raw, addr, index)
 	end
 end
 
-_M.byte = function (raw, addr, index)
-	--[[
-	data = raw:sub(addr)
-	return string.byte(data, index)
-	]]--
-	return string.byte(raw, addr + index)
+_M.byte = function (raw, addr)
+	return string.byte(raw, addr)
 end
 
 _M.get_len = function (name, len)
@@ -69,7 +68,11 @@ _M.get_len = function (name, len)
 	if name == 'bit' then
 		return 1
 	end
-	return len or math.floor(name:sub(5) / 8)
+	if len then
+		return len
+	end
+	local len = string.match('%(d+)$')
+	return math.floor(tonumber(len) / 8)
 end
 
 return _M

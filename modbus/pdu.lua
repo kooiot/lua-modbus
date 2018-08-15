@@ -58,9 +58,8 @@ _M.ForceSingleCoil = function(req)
 	local addr = hv .. lv
 	local pdu = fc .. addr
 
-	for k,v in pairs(t.tags.vals) do
-		local data = encode.int8(tonumber(v.Data))
-		pdu = pdu .. data
+	if req.data then
+		pdu = pdu .. req.data
 	end
 	return pdu
 end
@@ -72,9 +71,8 @@ _M.PresetSingleRegister = function(req)
 	local addr = hv .. lv
 	local pdu = fc .. addr
 
-	for k,v in pairs(t.tags.vals) do
-		local data = encode.int8(tonumber(v.Data))
-		pdu = pdu .. data
+	if req.data then
+		pdu = pdu .. req.data
 	end
 	return pdu
 end
@@ -94,9 +92,8 @@ _M.ForceMultipleCoils = function(req)
 	end
 	local pdu = fc .. addr .. len .. encode.uint8(bytes)
 
-	for k,v in pairs(t.tags.vals) do
-		local data = encode.int8(tonumber(v.Data))
-		pdu = pdu .. data
+	if req.data then
+		pdu = pdu .. req.data
 	end
 	return pdu
 end
@@ -111,9 +108,8 @@ _M.PresetMultipleRegs = function(req)
 	local bytes = tonumber(req.len) * 2
 	local pdu = fc .. addr .. len .. encode.uint8(bytes)
 
-	for k,v in pairs(t.tags.vals) do
-		local data = encode.int8(tonumber(v.Data))
-		pdu = pdu .. data
+	if req.data then
+		pdu = pdu .. req.data
 	end
 	return pdu
 end

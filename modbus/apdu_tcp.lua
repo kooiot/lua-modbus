@@ -52,7 +52,6 @@ function _M.check(buf, req)
 		return nil, buf, 7 - string.len(buf)
 	end
 
-	local adu = nil
 	local transaction = req.transaction or transaction_map[req.unit]
 	local hv, lv = encode.uint16(transaction)
 	transaction = hv .. lv
@@ -70,13 +69,19 @@ function _M.check(buf, req)
 				if string.len(buf) < len + 6 then
 					return nil, buf, len + 6 - string.len(buf)
 				end
-				adu = buf:sub(e + 3, e + 3 + len)
+				local adu = buf:sub(e + 3, e + 3 + len)
 				return adu, buf:sub(len + 6 + 1)
 			else
 				--print(req.func, decode.uint8(raw_fc), b, e)
 				if (decode.uint8(buf:sub(e + 4, e + 4)) == req.func + 0x80) then
 					--TODO exception
 					print("-----------exception---------------")
+					local len = decode.uint16(buf:sub(e + 1, e + 2))
+					if string.len(buf) < len + 6 then
+						return nil, buf, len + 6 - string.len(buf)
+					end
+					local adu = buf:sub(e + 3, e + 3 + len)
+					return adu, buf:sub(len + 6 + 1)
 				else
 					if b == 1 then
 						b = 2

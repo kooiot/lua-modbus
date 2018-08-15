@@ -34,10 +34,17 @@ function _M.check(buf, req)
 	local unit = encode.uint8(req.unit)
 	local func = tonumber(req.func)
 	while string.len(buf) > 4 do
+		local err_data = unit..encode.uint8(req.func + 0x80)..encode.uint8(1)
+		if string.sub(buf, 1, 3) == err_data then
+			if string.len(buf) >= 5 then
+				return buf:sub(1, 5), buf:sub(5)
+			end
+			return nil, buf, 5 - string.len(buf)
+		end
 		if func == 0x01 or func == 0x02 then
 			local len = math.ceil(tonumber(req.len) / 8)
 			local data = unit .. encode.uint8(req.func) .. encode.uint8(len)
-			local b, e = buf:find(data)
+			local b, e = buf:find(data, 1, true)
 			if e then
 				if e + len + 2 > string.len(buf) then
 					return nil, buf, e + len + 2 - string.len(buf)
@@ -52,7 +59,7 @@ function _M.check(buf, req)
 		elseif func == 0x03 or func == 0x04 then 
 			local len = req.len * 2
 			local data = unit .. encode.uint8(req.func) .. encode.uint8(len)
-			local b, e = buf:find(data)
+			local b, e = buf:find(data, 1, true)
 			if e then
 				if e + len + 2 > string.len(buf) then
 					return nil, buf, e + len + 2 - string.len(buf)
@@ -68,7 +75,7 @@ function _M.check(buf, req)
 			local hv, lv = encode.uint16(req.addr)
 			local addr = hv .. lv
 			local data = unit .. encode.uint8(req.func) .. addr
-			local b, e = buf:find(data)
+			local b, e = buf:find(data, 1, true)
 			if e then
 				if e + 4 > string.len(buf) then
 					return nil, buf, e + 4 - string.len(buf)
@@ -86,7 +93,7 @@ function _M.check(buf, req)
 			hv, lv = encode.uint16(req.len)
 			local len = hv .. lv
 			local data = unit .. encode.uint8(req.func) .. addr .. len
-			local b, e = buf:find(data)
+			local b, e = buf:find(data, 1, true)
 			if e then
 				if e + 2 > string.len(buf) then
 					return nil, buf, e + 2 - string.len(buf)
