@@ -36,7 +36,7 @@ local function make_read_response(apdu, req, timeout, cb)
 		local check = packet_check(apdu, req)
 
 		while true do
-			local t = (timeout / 10) - (skynet.now() - start)
+			local t = (timeout // 10) - (skynet.now() - start)
 			if t <= 0 then
 				break
 			end
