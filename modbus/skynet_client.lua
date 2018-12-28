@@ -88,4 +88,11 @@ function client:request(req, timeout)
 	return self._chn:request(msg, make_read_response(self._apdu, req, timeout, cb))
 end
 
+function client:close()
+	if self._chn then
+		self._chn:close()
+		self._chn = nil
+	end
+end
+
 return client
