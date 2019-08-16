@@ -1,8 +1,5 @@
-local encode = require "modbus.encode"
-local decode = require "modbus.decode"
+local encode = require "modbus.encode.data"
 local _M = {}
-
-
 
 --Read Only
 --0x01

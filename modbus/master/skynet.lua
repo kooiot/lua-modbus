@@ -1,9 +1,9 @@
 local skynet = require 'skynet'
-local pdu = require 'modbus.pdu'
-local code = require "modbus.code"
 local class = require 'middleclass'
+local code = require "modbus.code"
+local pdu = require 'modbus.encode.pdu'
 
-local client = class("Modbus_Skynet_Client")
+local client = class("Modbus_Skynet_Master")
 
 local function packet_check(apdu, req)
 	local req = req

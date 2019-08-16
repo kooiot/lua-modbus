@@ -1,5 +1,3 @@
-local encode = require 'modbus.encode'
-
 local _M = {}
 
 local CRC = function(adu)
@@ -51,17 +49,17 @@ local LRC = function(adu)
 	--TODO
 end
 
-_M.check = function(adu, checkmode) 
+_M.calc = function(adu, checkmode, little_endian) 
 	local checkmode = checkmode or "crc"
+	local fmt = little_endian and '<I2' or '>I2'
+
 	local checknum = 0
 	if checkmode == "crc" then
 		checknum = CRC(adu)
-		hv, lv = encode.uint16(checknum)
-		return lv .. hv
+		return string.pack(fmt, checknum), checknum
 	elseif checkmode == "lrc" then
 		checknum = LRC(adu)
-		hv, lv = encode.uint16(checknum)
-		return hv .. lv
+		return string.pack(fmt, checknum), checknum
 	end
 	assert(false, "checkmode not supported", checkmode)
 end

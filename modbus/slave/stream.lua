@@ -10,14 +10,11 @@ local function packet_check(apdu, req)
 	end
 end
 
--- Request {
---ecm, error checking methods
---unit, unit address
---func, modbus function code
---addr, start address
---len, length
---
-function class:request (req, timeout) 
+---
+-- Listen for request
+-- callback: function(fc, unit, pdu)
+function class:listen(callback)
+
 	if type(req.func) == 'string' then
 		req.func = code[req.func]
 	end
