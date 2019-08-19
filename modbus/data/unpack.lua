@@ -88,7 +88,7 @@ native_unpack.string = function (data, index, le)
 end
 
 function MAP_FMT(fmt)
-	if self._unpack then
+	if data._unpack then
 		data[fmt] = function(self, data, index)
 			self._unpack(self._fmts[fmt], data, index)
 		end
@@ -99,7 +99,7 @@ function MAP_FMT(fmt)
 	end
 end
 
-for k, v in pairs(be_fmt) do
+for k, v in pairs(be_fmts) do
 	MAP_FMT(k)
 end
 
@@ -122,7 +122,7 @@ function data:raw(data, index, len)
 	return string.sub(data, index, index + len)
 end
 
-function data:packsize = function (name, len)
+function data:packsize(name, len)
 	if name == 'string' then
 		return len
 	end

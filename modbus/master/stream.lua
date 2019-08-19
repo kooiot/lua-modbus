@@ -2,18 +2,18 @@ local class = require 'middleclass'
 
 local master = class('Modbus_Master_Stream')
 
-function master:initialize(apdu, stream, little_endian)
+function master:initialize(mode, stream, little_endian)
 	local m = nil
-	if string.lower(apdu) == 'tcp' then
+	if string.lower(mode) == 'tcp' then
 		m = require('modbus.apdu.tcp')
 		self._apdu = m:new(little_endian)
 	end
-	if string.lower(apdu) == 'rtu' then
+	if string.lower(mode) == 'rtu' then
 		m = require('modbus.apdu.rtu')
 		self._apdu = m:new('master', little_endian)
 	end
-	if string.lower(apdu) == 'asscii' then
-		m = require('modbus.apdu.asscii')
+	if string.lower(mode) == 'ascii' then
+		m = require('modbus.apdu.ascii')
 		self._apdu = m:new('master', little_endian)
 	end
 	self._cos = {}

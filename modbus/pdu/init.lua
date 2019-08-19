@@ -74,9 +74,9 @@ function pdu:make_request(fc, ...)
 
 	local fc = tonumber(fc) or code[fc]
 
-	local func = self['make_req_0x'..string.format("02X", fc)]
+	local func = self['make_req_0x'..string.format("%02X", fc)]
 	if func then
-		return func(fc, ...)
+		return func(self, fc, ...)
 	else
 		return nil, "Function code not supported!!"
 	end

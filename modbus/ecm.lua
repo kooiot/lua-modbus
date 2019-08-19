@@ -49,19 +49,21 @@ local LRC = function(adu)
 	--TODO
 end
 
-_M.calc = function(adu, checkmode, little_endian) 
-	local checkmode = checkmode or "crc"
-	local fmt = little_endian and '<I2' or '>I2'
+_M.calc = function(adu, checkmode, switch) 
+	local checkmode = string.lower(checkmode) or "crc"
+	-- CRC is little endian by default(in standard)
+	local fmt = switch and '>I2' or '<I2'
 
 	local checknum = 0
 	if checkmode == "crc" then
 		checknum = CRC(adu)
+		print(checknum)
 		return string.pack(fmt, checknum), checknum
 	elseif checkmode == "lrc" then
 		checknum = LRC(adu)
 		return string.pack(fmt, checknum), checknum
 	end
-	assert(false, "checkmode not supported", checkmode)
+	assert(false, "checkmode "..(checkmode or 'nil').." not supported")
 end
 
 return _M

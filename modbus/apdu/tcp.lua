@@ -113,4 +113,4 @@ function apdu:processs(buf, callback)
 	return buf, need_len or (min_packsize - string.len(buf))
 end
 
-return _M
+return apdu

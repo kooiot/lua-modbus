@@ -1,8 +1,5 @@
 local class = require 'middleclass'
 local ecm = require "modbus.ecm"
-local encode = require 'modbus.encode.data'
-local decode = require 'modbus.decode.data'
-
 
 local apdu = class('Modbus_Apdu_RTU_Class')
 

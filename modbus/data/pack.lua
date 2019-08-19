@@ -102,7 +102,7 @@ native_pack.string = function(value)
 end
 
 function MAP_FMT(fmt)
-	if self._pack then
+	if data._pack then
 		data[fmt] = function(self, val)
 			self._pack(self._fmts[fmt], val)
 		end
@@ -113,7 +113,7 @@ function MAP_FMT(fmt)
 	end
 end
 
-for k, v in pairs(be_fmt) do
+for k, v in pairs(be_fmts) do
 	MAP_FMT(k)
 end
 
