@@ -27,17 +27,18 @@ local le_fmts = {
 	string = '<z',
 }
 
+local data_pack = string.unpack
+if not data_pack then
+	local r, struct = pcall(require, 'struct')
+	if r then
+		data_pack = struct.pack
+	end
+end
+
+
 function data:initialize(little_endian)
 	self._le = little_endian
 	self._fmts = self._le and le_fmts or be_fmts
-	if string.pack then
-		self._pack = string.pack
-	else
-		local r, struct = pcall(require, 'struct')
-		if r then
-			self._pack = struct.pack
-		end
-	end
 end
 
 local native_pack = {}
@@ -102,9 +103,9 @@ native_pack.string = function(value)
 end
 
 function MAP_FMT(fmt)
-	if data._pack then
+	if data_pack then
 		data[fmt] = function(self, val)
-			self._pack(self._fmts[fmt], val)
+			return data_pack(self._fmts[fmt], val)
 		end
 	else
 		data[fmt] = function(self, val)

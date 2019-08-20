@@ -28,17 +28,17 @@ local le_fmts = {
 	string = '<z',
 }
 
+local data_unpack = string.unpack
+if not data_unpack then
+	local r, struct = pcall(require, 'struct')
+	if r then
+		data_unpack = struct.unpack
+	end
+end
+
 function data:initialize(little_endian)
 	self._le = little_endian
 	self._fmts = self._le and le_fmts or be_fmts
-	if string.unpack then
-		self._unpack = string.unpack
-	else
-		local r, struct = pcall(require, 'struct')
-		if r then
-			self._unpack = struct.unpack
-		end
-	end
 end
 
 local native_unpack = {}
@@ -96,9 +96,9 @@ native_unpack.double = function (data, index, le)
 end
 
 function MAP_FMT(fmt)
-	if data._unpack then
+	if data_unpack then
 		data[fmt] = function(self, data, index)
-			self._unpack(self._fmts[fmt], data, index)
+			return data_unpack(self._fmts[fmt], data, index)
 		end
 	else
 		data[fmt] = function(self, data, index)

@@ -207,9 +207,10 @@ function master:start()
 	skynet.fork(function()
 		while not self._closing do
 			self._apdu:process(function(unit, pdu, key)
+				assert(key)
 				local req_co = self._requests[key]
 				if req_co then
-					self._results[key] = {pdu}
+					self._results[key] = unit and {pdu} or {false, pdu, key}
 					skynet.wakeup(req_co)
 				end
 			end)

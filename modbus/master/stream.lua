@@ -38,15 +38,21 @@ function master:request(unit, pdu, callback, timeout)
 		pdu = pdu,
 		timeout = os.time() + timeout
 	}
+	return true
 end
 
 function master:_process(unit, pdu, key)
+	assert(key)
+	if not unit then
+		print(pdu, key)
+	end
+
 	local co = self._cos[key]
 	if not co then
 		return
 	end
 
-	co.callback(unit, pdu)
+	co.callback(unit, pdu, key)
 end
 
 function master:run_once(ms)

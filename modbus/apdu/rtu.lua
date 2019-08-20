@@ -68,7 +68,7 @@ function apdu:master_process(callback)
 				callback(unit, pdu, unit)
 			else
 				buf:pop(2)
-				callback(nil, pdu)
+				callback(nil, pdu, recv_unit)
 			end
 		else
 			if func == 0x01 or func == 0x02 then
@@ -86,7 +86,7 @@ function apdu:master_process(callback)
 						callback(unit, pdu, unit)
 					else
 						buf:pop(2)
-						callback(nil, pdu)
+						callback(nil, pdu, recv_unit)
 					end
 				else
 					buf:pop(2)
@@ -106,7 +106,7 @@ function apdu:master_process(callback)
 						callback(unit, pdu, unit)
 					else
 						buf:pop(2)
-						callback(nil, pdu)
+						callback(nil, pdu, recv_unit)
 					end
 				else
 					buf:pop(2)
@@ -124,7 +124,7 @@ function apdu:master_process(callback)
 					callback(unit, pdu, unit)
 				else
 					buf:pop(2)
-					callback(nil, pdu)
+					callback(nil, pdu, recv_unit)
 				end
 			elseif func == 0x0F or func == 0x10 then
 				local adu_len = 2 + 4 + 2 
@@ -139,7 +139,7 @@ function apdu:master_process(callback)
 					callback(unit, pdu, unit)
 				else
 					buf:pop(2)
-					callback(nil, pdu)
+					callback(nil, pdu, recv_unit)
 				end
 			else
 				buf:pop(2)
@@ -176,7 +176,7 @@ function apdu:slave_process(callback)
 				callback(unit, pdu, unit)
 			else
 				buf:pop(2)
-				callback(nil, pdu)
+				callback(nil, pdu, recv_unit)
 			end
 		elseif fc == 0x0F or fc == 0x10 then
 			if buf:len() < 8 then
@@ -200,7 +200,7 @@ function apdu:slave_process(callback)
 					callback(unit, pdu, unit)
 				else
 					buf:pop(2)
-					callback(nil, pdu)
+					callback(nil, pdu, recv_unit)
 				end
 			else
 				buf:pop(2)
