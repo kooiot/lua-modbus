@@ -1,45 +1,76 @@
-local pdu = require 'modbus.pdu'
-local code = require "modbus.code"
+local class = require 'middleclass'
 
-local class = {}
+local slave = class('Modbus_Slave_Stream')
 
-local function packet_check(apdu, req)
-	local req = req
-	return function(msg)
-		return apdu.check(msg, req)
+function slave:initialize(mode, stream, little_endian)
+	local m = nil
+	if string.lower(mode) == 'tcp' then
+		m = require('modbus.apdu.tcp')
+		self._apdu = m:new(little_endian)
+	end
+	if string.lower(mode) == 'rtu' then
+		m = require('modbus.apdu.rtu')
+		self._apdu = m:new('slave', little_endian)
+	end
+	if string.lower(mode) == 'ascii' then
+		m = require('modbus.apdu.ascii')
+		self._apdu = m:new('slave', little_endian)
+	end
+	self._buf = ''
+	self._stream = stream
+end
+
+function slave:add_unit(unit, callback)
+	assert(callback and not self._callbacks[unit])
+	self._callbacks[unit] = callback
+end
+
+function slave:remove_unit(unit)
+	self._callbacks[unit] = nil
+end
+
+function slave:_process(key, unit, pdu)
+	assert(key)
+	if not unit then
+		-- TODO: write 0x8x?
+		print(pdu, key)
+		return
+	end
+
+	local callback = self._callbacks[unit]
+	if callback then
+		cb(pdu, function(pdu)
+			local apdu_raw, key = assert(self._apdu:pack(unit, pdu, key))
+			if not apdu_raw then
+				return nil, key
+			end
+
+			self._stream:send(apdu_raw)
+		end)
+	else
+		-- TODO:
 	end
 end
 
----
--- Listen for request
--- callback: function(fc, unit, pdu)
-function class:listen(callback)
-
-	if type(req.func) == 'string' then
-		req.func = code[req.func]
-	end
-	req.unit = req.unit or self._unit
-	p = pdu[code[tonumber(req.func)]](req)
-	if not p then
-		return nil
+function slave:run_once(ms)
+	local now = os.time()
+	for k,v in pairs(self._cos) do
+		if v.timeout > now() then
+			callback(nil, "Timeout")
+			self._cos[k] = nil
+		end
 	end
 
-	local apdu_raw = assert(self._apdu.encode(p, req))
+	local buf, need_len = self._apdu:process(self._buf, function(key, unit, pdu)
+			self:_process(key, unit, pdu)
+	end)
 
-	--- write to pipe
-	self._stream.send(apdu_raw)
-
-	local raw, err = self._stream.read(packet_check(self._apdu, req), timeout)
-	if not raw then
-		return nil, err or "unknown"
+	local data = self._stream:recv(need_len, ms)
+	if data then
+		self._buf, need_len = self._apdu:process(buf..data, function(key, unit, pdu)
+			self:_process(key, unit, pdu)
+		end)
 	end
-
-	local unit, pdu_raw = self._apdu.decode(raw)
-	return pdu_raw, unit
 end
 
-return function (stream, apdu, unit)
-	local unit = unit or 1
-	return setmetatable({_stream = stream, _apdu = apdu, _unit=unit}, {__index=class})
-end
-
+return slave

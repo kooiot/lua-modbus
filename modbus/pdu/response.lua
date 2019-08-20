@@ -6,10 +6,10 @@ function response:initialize(little_endian)
 	self._le = little_endian
 end
 
-local function pack_len_data(le, fc, data)
+local function pack_len_data(le, fc, len, data)
 	local data = tostring(data)
 	local fmt = le and '<I1s1' or '>I1s1'
-	return string.pack(fmt, data)
+	return string.pack(fmt, fc, data)
 end
 
 local function unpack_len_data(le, pdu)

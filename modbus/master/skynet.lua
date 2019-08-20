@@ -3,7 +3,6 @@ local skynet = require 'skynet'
 local socket = require 'skynet.socket'
 local socketdriver = require 'skynet.socketdriver'
 local serial = require 'serialdriver'
-local buffer = require 'modbus.buffer'
 
 local master = class("Modbus_Master_Skynet")
 
@@ -29,7 +28,6 @@ function master:initialize(mode, opt, little_endian)
 	self._opt = opt
 	self._requests = {}
 	self._results = {}
-	self._buffer = buffer:new(512)
 end
 
 function master:set_io_cb(cb)
@@ -75,7 +73,6 @@ function master:request(unit, pdu, timeout)
 
 	if self._io_cb then
 		self._io_cb('OUT', unit, apdu_raw)
-	else
 	end
 
 	local t = {}

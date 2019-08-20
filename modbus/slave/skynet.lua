@@ -1,98 +1,248 @@
-local skynet = require 'skynet'
-local pdu = require 'modbus.pdu'
-local code = require "modbus.code"
 local class = require 'middleclass'
+local skynet = require 'skynet'
+local socket = require 'skynet.socket'
+local socketdriver = require 'skynet.socketdriver'
+local serial = require 'serialdriver'
 
-local slave = class("Modbus_Skynet_Slave")
+local slave = class("Modbus_Slave_Skynet")
 
-local function packet_check(apdu, req)
-	local req = req
-	return function(msg)
-		return apdu.check(msg, req)
+--- 
+-- stream_type: tcp/serial
+function slave:initialize(mode, opt, little_endian)
+	local m = nil
+	if string.lower(mode) == 'tcp' then
+		m = require('modbus.apdu.tcp')
+		self._apdu = m:new(little_endian)
 	end
-end
-
-local function compose_message(apdu, req, unit)
-	if type(req.func) == 'string' then
-		req.func = code[req.func]
+	if string.lower(mode) == 'rtu' then
+		m = require('modbus.apdu.rtu')
+		self._apdu = m:new('slave', little_endian)
 	end
-	req.unit = req.unit or unit
-
-	p = pdu[code[tonumber(req.func)]](req)
-	if not p then
-		return nil
+	if string.lower(mode) == 'ascii' then
+		m = require('modbus.apdu.ascii')
+		self._apdu = m:new('slave', little_endian)
 	end
 
-	local apdu_raw = assert(apdu.encode(p, req))
-	return apdu_raw
-end
-
-local function make_read_response(apdu, req, timeout, cb)
-	return function(sock)
-		local start = skynet.now()
-		local pdu = nil
-		local buf = ""
-		local need_len = apdu.min_packet_len
-		local check = packet_check(apdu, req)
-
-		while true do
-			local t = (timeout // 10) - (skynet.now() - start)
-			if t <= 0 then
-				break
-			end
-
-			local str, err = sock:read(need_len, t)
-			if not str then
-				return false, err
-			end
-			if cb then
-				cb("IN", str)
-			end
-
-			buf = buf..str
-			adu, buf, need_len = check(buf)
-			if adu then
-				local unit, pdu = apdu.decode(adu)
-				if unit == req.unit then
-					return true, pdu
-				else
-					return false, "Unit error"
-				end
-			end
-		end
-		return false, "timeout"
-	end
-end
-
-function slave:initialize(sc, opt, apdu, unit)
-	local channel = sc.channel(opt)
-	self._chn = channel
-	self._unit = unit or 1
-	self._apdu = apdu
-end
-
-function slave:connect(only_once)
-	return self._chn:connect(only_once)
+	opt.link = string.lower(opt.link or 'serial')
+	self._closing = false
+	self._opt = opt
+	self._requests = {}
+	self._results = {}
+	self._callbacks = {}
 end
 
 function slave:set_io_cb(cb)
-	self._data_cb = cb
+	self._io_cb = cb
 end
 
-function slave:request(req, timeout)
-	local cb = self._data_cb
-	local msg = compose_message(self._apdu, req, self._unit)
-	if cb then
-		cb("OUT", msg)
+---
+-- callback(key, unit, pdu)
+function slave:add_unit(unit, callback)
+	assert(callback and not self._callbacks[unit])
+	self._callbacks[unit] = callback
+end
+
+function slave:remove_unit(unit)
+	self._callbacks[unit] = nil
+end
+
+function slave:connect_proc()
+	local connect_gap = 100 -- one second
+	while not self._closing do
+		self._connection_wait = {}
+		skynet.sleep(connect_gap, self._connection_wait)
+		self._connection_wait = nil
+		if self._closing then
+			break
+		end
+
+		local r, err = self:start_connect()
+		if r then
+			break
+		end
+
+		connect_gap = connect_gap * 2
+		if connect_gap > 64 * 100 then
+			connect_gap = 100
+		end
+		skynet.error("Wait for retart connection", connect_gap)
 	end
-	return self._chn:request(msg, make_read_response(self._apdu, req, timeout, cb))
-end
 
-function slave:close()
-	if self._chn then
-		self._chn:close()
-		self._chn = nil
+	if self._server_socket then
+		self:watch_server_socket()
 	end
 end
 
-return slave
+function slave:watch_server_socket()
+	while self._server_socket do
+		while self._server_socket and not self._socket do
+			skynet.sleep(10)
+		end
+		if not self._server_socket then
+			break
+		end
+
+		while self._socket and self._server_socket do
+			local data, err = socket.read(self._socket)	
+			if not data then
+				self._log:info("Client socket disconnected", err)
+				break
+			end
+			self:process(data)
+		end
+
+		if self._socket then
+			local to_close = self._socket
+			self._socket = nil
+			socket.close(to_close)
+		end
+	end
+
+	if not self._server_socket then
+		skynet.timeout(100, function()
+			self:connect_proc()
+		end)
+	end
+end
+
+function slave:start_connect()
+	if self._opt.link == 'tcp' then
+		local conf = self._opt.tcp
+		self._log:info(string.format("Listen on %s:%d", conf.host, conf.port))
+		local sock, err = socket.listen(conf.host, conf.port)
+		if not sock then
+			return nil, string.format("Cannot listen on %s:%d. err: %s", conf.host, conf.port, err or "")
+		end
+		self._server_socket = sock
+		socket.start(sock, function(fd, addr)
+			self._log:info(string.format("New connection (fd = %d, %s)",fd, addr))
+			--- TODO: Limit client ip/host
+
+			if conf.nodelay then
+				socketdriver.nodelay(fd)
+			end
+
+			local to_close = self._socket
+			socket.start(fd)
+			self._socket = fd
+
+			local host, port = string.match(addr, "^(.+):(%d+)$")
+			if host and port then
+				self._socket_peer = cjson.encode({
+					host = host,
+					port = port,
+				})
+			else
+				self._socket_peer = addr
+			end
+			if to_close then
+				self._log:warning(string.format("Previous socket closing, fd = %d", to_close))
+				socket.close(to_close)
+			end
+		end)
+		return true
+	end
+	if self._opt.link == 'serial' then
+		local opt = self._opt.serial
+		local port = serial:new(opt.port, opt.baudrate or 9600, opt.data_bits or 8, opt.parity or 'NONE', opt.stop_bits or 1, opt.flow_control or "OFF")
+		local r, err = port:open()
+		if not r then
+			skynet.error("Failed open serial port:"..opt.port..", error: "..err)
+			return nil, err
+		end
+
+		port:start(function(data, err)
+			-- Recevied Data here
+			if data then
+				self:process(data)
+			else
+				skynet.error(err)
+				port:close()
+				self._port = nil
+				skynet.timeout(100, function()
+					self:connect_proc()
+				end)
+			end
+		end)
+
+		self._port = port
+		return true
+	end
+	return false, "Unknown Link Type"
+end
+
+function slave:process(data)
+	self._apdu:append(data)
+	if self._apdu_wait then
+		skynet.wakeup(self._apdu_wait)
+	end
+
+	if self._io_cb then
+		self._io_cb('IN', nil, data)
+	end
+end
+
+function slave:start()
+	if self._socket or self._port then
+		return nil, "Already started"
+	end
+
+	self._closing = false
+
+	skynet.timeout(100, function()
+		self:connect_proc()
+	end)
+
+	skynet.fork(function()
+		while not self._closing do
+			self._apdu:process(function(key, unit, pdu)
+				local cb = self._callbacks[unit]
+				if cb and unit and pdu then
+					cb(pdu, function(pdu)
+						local apdu_raw, key = assert(self._apdu:pack(unit, pdu, key))
+						if not apdu_raw then
+							return nil, key
+						end
+
+						if not self._socket and not self._port then
+							return
+						end
+
+						if self._socket then
+							socket.write(self._socket, apdu_raw)
+						end
+						if self._port then
+							self._port:write(apdu_raw)
+						end
+
+						if self._io_cb then
+							self._io_cb('OUT', unit, apdu_raw)
+						end
+					end)
+				else
+					--- TODO: write 0x8X error response
+				end
+			end)
+			self._apdu_wait = {}
+			skynet.sleep(1000, self._apdu_wait)
+			self._apdu_wait = nil
+		end
+	end)
+end
+
+function slave:stop()
+	self._closing = true
+	if self._apdu_wait then
+		skynet.wakeup(self._apdu_wait) -- wakeup the process co
+	end
+	if self._connection_wait then
+		skynet.wakeup(self._connection_wait) -- wakeup the process co
+	end
+	for k, v in pairs(self._requests) do
+		skynet.wakeup(v)
+	end
+	self._requests = {}
+	self._results = {}
+end
+
+return slave 
