@@ -59,6 +59,14 @@ function master:request(unit, pdu, timeout)
 		return nil, "Not connected!!"
 	end
 
+	if self._port then
+		--- Serial modbus
+		while self._locked do
+			skynet.sleep(10)
+		end
+		self._locked = true
+	end
+
 	if self._socket then
 		local r, err = socket.write(self._socket, apdu_raw)
 	else
@@ -66,7 +74,7 @@ function master:request(unit, pdu, timeout)
 	end
 
 	if self._io_cb then
-		self._io_cb('OUT', apdu_raw)
+		self._io_cb('OUT', unit, apdu_raw)
 	else
 	end
 
@@ -76,6 +84,10 @@ function master:request(unit, pdu, timeout)
 	skynet.sleep(timeout / 10, t)
 
 	self._requests[key] = nil
+
+	if self._port then
+		self._locked = nil
+	end
 	
 	return table.unpack(self._results[key] or {false, "Timeout"})
 end
@@ -188,7 +200,7 @@ function master:process(data)
 	end
 
 	if self._io_cb then
-		self._io_cb('IN', data)
+		self._io_cb('IN', nil, data)
 	end
 end
 
@@ -206,11 +218,24 @@ function master:start()
 
 	skynet.fork(function()
 		while not self._closing do
-			self._apdu:process(function(unit, pdu, key)
+			self._apdu:process(function(key, unit, pdu)
 				assert(key)
 				local req_co = self._requests[key]
 				if req_co then
-					self._results[key] = unit and {pdu} or {false, pdu, key}
+					local err_flag = false
+					if unit then
+						local fc = string.unpack('I1', pdu)
+						err_flag = fc & 0x80 ~= 0
+						if err_flag then
+							-- TODO: 
+							self._results[key] = {false, pdu, key}
+						else
+							self._results[key] = {pdu}
+						end
+					else
+						self._results[key] = {false, pdu, key}
+					end
+
 					skynet.wakeup(req_co)
 				end
 			end)

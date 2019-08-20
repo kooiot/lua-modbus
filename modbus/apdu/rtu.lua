@@ -65,10 +65,10 @@ function apdu:master_process(callback)
 			local unit, pdu = self:unpack(buf:sub(1, 5))
 			if unit ~= nil then
 				buf:pop(5)
-				callback(unit, pdu, unit)
+				callback(unit, unit, pdu)
 			else
 				buf:pop(2)
-				callback(nil, pdu, recv_unit)
+				callback(recv_unit, nil, pdu)
 			end
 		else
 			if func == 0x01 or func == 0x02 then
@@ -83,10 +83,10 @@ function apdu:master_process(callback)
 					local unit, pdu = self:unpack(buf:sub(1, adu_len))
 					if unit ~= nil then
 						buf:pop(adu_len)
-						callback(unit, pdu, unit)
+						callback(unit, unit, pdu)
 					else
 						buf:pop(2)
-						callback(nil, pdu, recv_unit)
+						callback(recv_unit, nil, pdu)
 					end
 				else
 					buf:pop(2)
@@ -103,10 +103,10 @@ function apdu:master_process(callback)
 					local unit, pdu = self:unpack(buf:sub(1, adu_len))
 					if unit ~= nil then
 						buf:pop(adu_len)
-						callback(unit, pdu, unit)
+						callback(unit, unit, pdu)
 					else
 						buf:pop(2)
-						callback(nil, pdu, recv_unit)
+						callback(recv_unit, nil, pdu)
 					end
 				else
 					buf:pop(2)
@@ -121,10 +121,10 @@ function apdu:master_process(callback)
 				local unit, pdu = self:unpack(buf:sub(1, adu_len))
 				if unit ~= nil then
 					buf:pop(adu_len)
-					callback(unit, pdu, unit)
+					callback(unit, unit, pdu)
 				else
 					buf:pop(2)
-					callback(nil, pdu, recv_unit)
+					callback(recv_unit, nil, pdu)
 				end
 			elseif func == 0x0F or func == 0x10 then
 				local adu_len = 2 + 4 + 2 
@@ -136,10 +136,10 @@ function apdu:master_process(callback)
 				local unit, pdu = self:unpack(buf:sub(1, adu_len))
 				if unit ~= nil then
 					buf:pop(adu_len)
-					callback(unit, pdu, unit)
+					callback(unit, unit, pdu)
 				else
 					buf:pop(2)
-					callback(nil, pdu, recv_unit)
+					callback(recv_unit, nil, pdu)
 				end
 			else
 				buf:pop(2)
@@ -173,10 +173,10 @@ function apdu:slave_process(callback)
 			local unit, pdu = self:unpack(buf:sub(1, adu_len))
 			if unit ~= nil then
 				buf:pop(adu_len)
-				callback(unit, pdu, unit)
+				callback(unit, unit, pdu)
 			else
 				buf:pop(2)
-				callback(nil, pdu, recv_unit)
+				callback(recv_unit, nil, pdu)
 			end
 		elseif fc == 0x0F or fc == 0x10 then
 			if buf:len() < 8 then
@@ -197,10 +197,10 @@ function apdu:slave_process(callback)
 				local unit, pdu = self:unpack(buf:sub(1, aud_len))
 				if unit ~= nil then
 					buf:pop(adu_len)
-					callback(unit, pdu, unit)
+					callback(unit, unit, pdu)
 				else
 					buf:pop(2)
-					callback(nil, pdu, recv_unit)
+					callback(recv_unit, nil, pdu)
 				end
 			else
 				buf:pop(2)

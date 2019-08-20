@@ -34,7 +34,7 @@ local function pack_addr_data(le, fc, addr, data)
 	assert(data ~= nil, "Data cannot be empty!")
 
 	local fmt = le and '<I1I2I2' or '>I1I2I2'
-	return string.pack(fmt, fc, addr, len)
+	return string.pack(fmt, fc, addr, data)
 end
 
 local function unpack_addr_data(le, pdu)
@@ -58,7 +58,7 @@ local function pack_addr_len_data(le, fc, addr, len, data)
 
 	local count = fc == 0x0F and math.ceil(len / 8) or len * 2
 	local fmt = le and '<I1I2I2I1' or '>I1I2I2I1'
-	return string.pack(fmt, fc, addr, len, count)
+	return string.pack(fmt, fc, addr, len, count)..data
 end
 
 local function unpack_addr_len_data(le, pdu)

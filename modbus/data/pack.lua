@@ -27,7 +27,7 @@ local le_fmts = {
 	string = '<z',
 }
 
-local data_pack = string.unpack
+local data_pack = string.pack
 if not data_pack then
 	local r, struct = pcall(require, 'struct')
 	if r then
