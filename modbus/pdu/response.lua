@@ -8,8 +8,9 @@ end
 
 local function pack_len_data(le, fc, len, data)
 	local data = tostring(data)
-	local fmt = le and '<I1s1' or '>I1s1'
-	return string.pack(fmt, fc, data)
+	local fmt = le and '<I1I1c' or '>I1I1c'
+	fmt = fmt..string.len(data)
+	return string.pack(fmt, fc, len, data)
 end
 
 local function unpack_len_data(le, pdu)

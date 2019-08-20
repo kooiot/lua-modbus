@@ -118,8 +118,9 @@ for k, v in pairs(be_fmts) do
 	MAP_FMT(k)
 end
 
-function data:bit(vals)
+function data:bit(...)
 	local t = {}
+	local vals = {...}
 
 	local val = 0
 	for i, v in ipairs(vals) do
