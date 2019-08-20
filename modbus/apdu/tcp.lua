@@ -1,4 +1,5 @@
 local class = require 'middleclass'
+local buffer = require 'modbus.buffer'
 
 local apdu = class('Modbus_Apdu_TCP_Class')
 
@@ -17,6 +18,7 @@ function apdu:initialize(little_endian)
 	self._le = little_endian
 	self._header_fmt = self._le and '<I2I2I2I1' or '>I2I2I2I1'
 	self._transaction_map = {}
+	self._buf = buffer:new(1024)
 end
 
 function apdu:create_header(transaction, length, unit)
@@ -56,10 +58,10 @@ function apdu:pack(unit, pdu, transaction)
 end
 
 ---
--- Return unit, pdu, transaction and left data
-function apdu:unpack(data)
-	if string.len(data) < self:min_packsize() then
-		return nil, self:min_packsize() - string.len(data)
+-- Return unit, pdu, transaction
+function apdu:unpack(buf)
+	if buf:len() < self:min_packsize() then
+		return nil, self:min_packsize() - buf:len()
 	end
 
 	local transaction, length, unit = self:unpack_header(data)
@@ -68,49 +70,58 @@ function apdu:unpack(data)
 	end
 	assert(transaction, length, unit)
 
-	if string.len(data) < self:packsize_header() + length then
+	if buf:len() < self:packsize_header() + length then
 		return nil, "not enough data"
 	end
 
 	local si = self:packsize_header() + 1
 	local ei = si + length
-	local pdu = string.sub(data, ei)
+	local pdu = buf:sub(si, ei)
 
-	return unit, pdu, transaction, string.sub(data, ei + 1)
+	buf:pop(ei)
+
+	return unit, pdu, transaction
 end
 
 function apdu:min_packsize()
 	return self:packsize_header() + 1
 end
 
-function apdu:processs(buf, callback)
+function apdu:append(data)
+	self._buf:append(data)
+end
+
+function apdu:processs(callback)
 	local min_packsize = self:min_packsize()
 	local need_len = nil
+	local buf = self._buf
 
-	while string.len(buf) >= min_packsize do
+	while buf:len() >= min_packsize do
 		--- Start from index 3
-		local pid_index = string.find(data, '\0\0', 3, true)
+		local pid_index = data:find('\0\0', 3, true)
 		if not pid_index then
-			buf = string.sub(buf, -2)
-			break
-		end
-		local buf = string.sub(buf, pid_index - 2)
-
-		if string.len(data) < min_packsize then
+			buf:pop(-3)
 			break
 		end
 
-		local unit, pdu, transaction, new_buf = self:unpack(buf)
+		if pip_index > 3 then
+			buf:pop(pid_index - 3)
+		end
+
+		if buf:len() < min_packsize then
+			break
+		end
+
+		local unit, pdu, transaction = self:unpack(buf)
 		if unit then
 			callback(unit, pdu, transaction)
-			buf = new_buf
 		else
 			need_len = 1 -- at less one byte more
 			break
 		end
 	end
 
-	return buf, need_len or (min_packsize - string.len(buf))
+	return need_len or (min_packsize - buf:len())
 end
 
 return apdu

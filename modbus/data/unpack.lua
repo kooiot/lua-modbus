@@ -87,6 +87,14 @@ native_unpack.string = function (data, index, le)
 	return string.sub(data, index, e - 1)
 end
 
+native_unpack.float = function (data, index, le)
+	assert(false, "float is not supported!")
+end
+
+native_unpack.double = function (data, index, le)
+	assert(false, "double is not supported!")
+end
+
 function MAP_FMT(fmt)
 	if data._unpack then
 		data[fmt] = function(self, data, index)

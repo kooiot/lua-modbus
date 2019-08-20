@@ -57,7 +57,6 @@ _M.calc = function(adu, checkmode, switch)
 	local checknum = 0
 	if checkmode == "crc" then
 		checknum = CRC(adu)
-		print(checknum)
 		return string.pack(fmt, checknum), checknum
 	elseif checkmode == "lrc" then
 		checknum = LRC(adu)

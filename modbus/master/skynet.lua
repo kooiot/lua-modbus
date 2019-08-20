@@ -3,6 +3,7 @@ local skynet = require 'skynet'
 local socket = require 'skynet.socket'
 local socketdriver = require 'skynet.socketdriver'
 local serial = require 'serialdriver'
+local buffer = require 'modbus.buffer'
 
 local master = class("Modbus_Master_Skynet")
 
@@ -24,10 +25,11 @@ function master:initialize(mode, opt, little_endian)
 	end
 
 	opt.link = string.lower(opt.link or 'serial')
+	self._closing = false
 	self._opt = opt
 	self._requests = {}
-	self._callbacks = {}
 	self._results = {}
+	self._buffer = buffer:new(512)
 end
 
 function master:set_io_cb(cb)
@@ -35,17 +37,23 @@ function master:set_io_cb(cb)
 end
 
 --- Timeout: ms
-function master:request(unit, pdu, callback, timeout)
-	assert(pdu and callback, "PDU and callbak is required!")
+function master:request(unit, pdu, timeout)
+	assert(unit and pdu, "Unit and PDU are required!")
 	local apdu_raw, key = assert(self._apdu:pack(unit, pdu))
 	if not apdu_raw then
 		return nil, key
+	end
+	if self._requests[key] then
+		return nil, "Key already used!!!"
 	end
 
 	local t_left = timeout
 	while not self._socket and not self._port and t_left > 0 do
 		skynet.sleep(100)
 		t_left = t_left - 1000
+		if self._closing then
+			return nil, "Connection closing!!!"
+		end
 	end
 	if t_left <= 0 then
 		return nil, "Not connected!!"
@@ -64,20 +72,24 @@ function master:request(unit, pdu, callback, timeout)
 
 	local t = {}
 	self._requests[key] = t
-	self._callbacks[key] = callback
 
 	skynet.sleep(timeout / 10, t)
 
 	self._requests[key] = nil
-	self._callbacks[key] = nil 
 	
 	return table.unpack(self._results[key] or {false, "Timeout"})
 end
 
 function master:connect_proc()
 	local connect_gap = 100 -- one second
-	while true do
-		skynet.sleep(connect_gap)
+	while not self._closing do
+		self._connection_wait = {}
+		skynet.sleep(connect_gap, self._connection_wait)
+		self._connection_wait = nil
+		if self._closing then
+			break
+		end
+
 		local r, err = self:start_connect()
 		if r then
 			break
@@ -96,7 +108,7 @@ function master:connect_proc()
 end
 
 function master:watch_client_socket()
-	while self._socket do
+	while self._socket and not self._closing do
 		local data, err = socket.read(self._socket)	
 		if not data then
 			skynet.error("Socket disconnected", err)
@@ -109,6 +121,10 @@ function master:watch_client_socket()
 		local to_close = self._socket
 		self._socket = nil
 		socket.close(to_close)
+	end
+
+	if self._closing then
+		return
 	end
 
 	--- reconnection
@@ -146,7 +162,6 @@ function master:start_connect()
 		end
 
 		port:start(function(data, err)
-			print(data, err)
 			-- Recevied Data here
 			if data then
 				self:process(data)
@@ -167,7 +182,10 @@ function master:start_connect()
 end
 
 function master:process(data)
-	--TODO:
+	self._apdu:append(data)
+	if self._apdu_wait then
+		skynet.wakeup(self._apdu_wait)
+	end
 
 	if self._io_cb then
 		self._io_cb('IN', data)
@@ -180,9 +198,41 @@ function master:start()
 		return nil, "Already started"
 	end
 
+	self._closing = false
+
 	skynet.timeout(100, function()
 		self:connect_proc()
 	end)
+
+	skynet.fork(function()
+		while not self._closing do
+			self._apdu:process(function(unit, pdu, key)
+				local req_co = self._requests[key]
+				if req_co then
+					self._results[key] = {pdu}
+					skynet.wakeup(req_co)
+				end
+			end)
+			self._apdu_wait = {}
+			skynet.sleep(1000, self._apdu_wait)
+			self._apdu_wait = nil
+		end
+	end)
+end
+
+function master:stop()
+	self._closing = true
+	if self._apdu_wait then
+		skynet.wakeup(self._apdu_wait) -- wakeup the process co
+	end
+	if self._connection_wait then
+		skynet.wakeup(self._connection_wait) -- wakeup the process co
+	end
+	for k, v in pairs(self._requests) do
+		skynet.wakeup(v)
+	end
+	self._requests = {}
+	self._results = {}
 end
 
 return master 
