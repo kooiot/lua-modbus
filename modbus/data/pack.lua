@@ -124,8 +124,8 @@ function data:bit(...)
 
 	local val = 0
 	for i, v in ipairs(vals) do
-		if vals[i + 1] == 1 or vals[i + 1] == true then
-			val = val + (2 ^ (i % 8))
+		if v == 1 or v == true then
+			val = val + (2 ^ ( (i - 1) % 8))
 		end
 		if i % 8 == 0 then
 			table.insert(t, self:uint8(val))

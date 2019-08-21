@@ -113,10 +113,9 @@ end
 
 function data:bit(data, index)
 	-- Keep consistency for index start from 1 as string.sub
-	local index = (index or 1) - 1
-	local val = math.ceil((index + 1) / 8)
-	local data = native_unpack.uint8(string.sub(data, val, val))
-	local offset = index % 8
+	local index = math.ceil( (index or 1) / 8 )
+	local data = native_unpack.uint8(string.sub(data, index, index))
+	local offset = (index - 1) % 8
 
 	if _VERSION == 'Lua 5.1' or _VERSION == 'Lua 5.2' then
 		local bit32 = require 'bit'

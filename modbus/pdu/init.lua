@@ -87,21 +87,13 @@ function pdu:make_resp_error(fc, errno)
 end
 
 function pdu:make_resp_0x01(fc, ...)
-	local values = {...}
-	local len = #values
-	assert(len > 0, "Values missing")
-
-	local data = self._data_pack:bit(values)
+	local data = self._data_pack:bit(...)
 
 	return self._resp:pack(fc, table.concat(data))
 end
 
 function pdu:make_resp_0x02(fc, ...)
-	local values = {...}
-	local len = #values
-	assert(len > 0, "Values missing")
-
-	local data = self._data_pack:bit(values)
+	local data = self._data_pack:bit(...)
 
 	return self._resp:pack(fc, table.concat(data))
 end
