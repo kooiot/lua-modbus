@@ -66,14 +66,14 @@ function master:request(unit, pdu, timeout)
 		self._locked = true
 	end
 
+	if self._io_cb then
+		self._io_cb('OUT', unit, apdu_raw)
+	end
+
 	if self._socket then
 		local r, err = socket.write(self._socket, apdu_raw)
 	else
 		local r, err = self._port:write(apdu_raw)
-	end
-
-	if self._io_cb then
-		self._io_cb('OUT', unit, apdu_raw)
 	end
 
 	local t = {}
@@ -237,6 +237,8 @@ function master:start()
 					end
 
 					skynet.wakeup(req_co)
+				else
+					skynet.error('Coroutine for key: '..key..' missing!')
 				end
 			end)
 			self._apdu_wait = {}

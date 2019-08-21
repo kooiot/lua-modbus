@@ -45,9 +45,11 @@ local LRC = function(adu)
 	for i = 1, len do
 		uchLRC = uchLRC + string.byte(adu, i)
 	end
-	--uchLRC =  ( - uchLRC ) % 0x100
+	uchLRC =  ( - uchLRC ) % 0x100
+	--[[
 	uchLRC = uchLRC % 256
 	uchLRC =  (( ~ uchLRC )  + 1 ) % 256
+	]]
 
 	return uchLRC
 end
