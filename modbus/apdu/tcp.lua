@@ -91,7 +91,7 @@ function apdu:append(data)
 	self._buf:append(data)
 end
 
-function apdu:processs(callback)
+function apdu:process(callback)
 	local min_packsize = self:min_packsize()
 	local need_len = nil
 	local buf = self._buf

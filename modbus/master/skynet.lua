@@ -22,6 +22,7 @@ function master:initialize(mode, opt, little_endian)
 		m = require('modbus.apdu.ascii')
 		self._apdu = m:new('master', little_endian)
 	end
+	assert(self._apdu, "APDU failure!!")
 
 	opt.link = string.lower(opt.link or 'serial')
 	self._closing = false
@@ -86,7 +87,9 @@ function master:request(unit, pdu, timeout)
 		self._locked = nil
 	end
 	
-	return table.unpack(self._results[key] or {false, "Timeout"})
+	local result = self._results[key] or {false, "Timeout"}
+	self._results[key] = nil
+	return table.unpack(result)
 end
 
 function master:connect_proc()

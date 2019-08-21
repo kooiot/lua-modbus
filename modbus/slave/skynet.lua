@@ -22,12 +22,11 @@ function slave:initialize(mode, opt, little_endian)
 		m = require('modbus.apdu.ascii')
 		self._apdu = m:new('slave', little_endian)
 	end
+	assert(self._apdu, "APDU failure!!")
 
 	opt.link = string.lower(opt.link or 'serial')
 	self._closing = false
 	self._opt = opt
-	self._requests = {}
-	self._results = {}
 	self._callbacks = {}
 end
 
@@ -85,7 +84,7 @@ function slave:watch_server_socket()
 		while self._socket and self._server_socket do
 			local data, err = socket.read(self._socket)	
 			if not data then
-				self._log:info("Client socket disconnected", err)
+				skynet.error("Client socket disconnected", err)
 				break
 			end
 			self:process(data)
@@ -108,14 +107,14 @@ end
 function slave:start_connect()
 	if self._opt.link == 'tcp' then
 		local conf = self._opt.tcp
-		self._log:info(string.format("Listen on %s:%d", conf.host, conf.port))
+		skynet.error(string.format("Listen on %s:%d", conf.host, conf.port))
 		local sock, err = socket.listen(conf.host, conf.port)
 		if not sock then
 			return nil, string.format("Cannot listen on %s:%d. err: %s", conf.host, conf.port, err or "")
 		end
 		self._server_socket = sock
 		socket.start(sock, function(fd, addr)
-			self._log:info(string.format("New connection (fd = %d, %s)",fd, addr))
+			skynet.error(string.format("New connection (fd = %d, %s)",fd, addr))
 			--- TODO: Limit client ip/host
 
 			if conf.nodelay then
@@ -136,7 +135,7 @@ function slave:start_connect()
 				self._socket_peer = addr
 			end
 			if to_close then
-				self._log:warning(string.format("Previous socket closing, fd = %d", to_close))
+				skynet.error(string.format("Previous socket closing, fd = %d", to_close))
 				socket.close(to_close)
 			end
 		end)
@@ -238,11 +237,6 @@ function slave:stop()
 	if self._connection_wait then
 		skynet.wakeup(self._connection_wait) -- wakeup the process co
 	end
-	for k, v in pairs(self._requests) do
-		skynet.wakeup(v)
-	end
-	self._requests = {}
-	self._results = {}
 end
 
 return slave 

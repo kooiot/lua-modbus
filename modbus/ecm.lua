@@ -40,27 +40,30 @@ local CRC = function(adu)
 end
 
 local LRC = function(adu)
---[[	local uchLRC = 0
-	for i, #adu do
-		uchLRC = uchLRC + adu:byte(i)
+	local uchLRC = 0
+	local len = string.len(adu)
+	for i = 1, len do
+		uchLRC = uchLRC + string.byte(adu, i)
 	end
-	-- return twos complement
---]]
-	--TODO
+	--uchLRC =  ( - uchLRC ) % 0x100
+	uchLRC = uchLRC % 256
+	uchLRC =  (( ~ uchLRC )  + 1 ) % 256
+
+	return uchLRC
 end
 
 _M.calc = function(adu, checkmode, switch) 
 	local checkmode = string.lower(checkmode) or "crc"
-	-- CRC is little endian by default(in standard)
-	local fmt = switch and '>I2' or '<I2'
 
 	local checknum = 0
 	if checkmode == "crc" then
+		-- CRC is little endian by default(in standard)
+		local fmt = switch and '>I2' or '<I2'
 		checknum = CRC(adu)
 		return string.pack(fmt, checknum), checknum
 	elseif checkmode == "lrc" then
 		checknum = LRC(adu)
-		return string.pack(fmt, checknum), checknum
+		return string.pack('I1', checknum), checknum
 	end
 	assert(false, "checkmode "..(checkmode or 'nil').." not supported")
 end
