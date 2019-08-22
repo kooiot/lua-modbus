@@ -41,14 +41,14 @@ function apdu:unpack_header(data)
 		return nil, "Protocol ID incorrect"
 	end
 
-	return transcation, length - 1, unit
+	return transaction, length - 1, unit
 end
 
 function apdu:packsize_header()
 	return string.packsize(self._header_fmt)
 end
 
---- transcation is optional
+--- transaction is optional
 function apdu:pack(unit, pdu, transaction)
 	assert(pdu, "PDU object required!")
 	assert(unit, "Device unit id required!")
@@ -64,13 +64,14 @@ function apdu:unpack(buf)
 		return nil, self:min_packsize() - buf:len()
 	end
 
-	local transaction, length, unit = self:unpack_header(data)
+	local transaction, length, unit = self:unpack_header(tostring(buf))
 	if not transaction then
 		return nil, length
 	end
 	assert(transaction, length, unit)
 
 	if buf:len() < self:packsize_header() + length then
+		print('111112222233333')
 		return nil, "not enough data"
 	end
 
@@ -98,13 +99,13 @@ function apdu:process(callback)
 
 	while buf:len() >= min_packsize do
 		--- Start from index 3
-		local pid_index = data:find('\0\0', 3, true)
+		local pid_index = buf:find('\0\0', 3, true)
 		if not pid_index then
 			buf:pop(-3)
 			break
 		end
 
-		if pip_index > 3 then
+		if pid_index > 3 then
 			buf:pop(pid_index - 3)
 		end
 
