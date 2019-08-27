@@ -29,7 +29,7 @@ function apdu:create_header(transaction, length, unit)
 
 	self._transaction_map[unit] = transaction
 
-	return string.pack(self._header_fmt, transaction, 0, length + 1, unit)
+	return string.pack(self._header_fmt, transaction, 0, length + 1, unit), transaction
 end
 
 function apdu:unpack_header(data)
@@ -53,8 +53,8 @@ function apdu:pack(unit, pdu, transaction)
 	assert(pdu, "PDU object required!")
 	assert(unit, "Device unit id required!")
 
-	local data = self:create_header(transaction, string.len(pdu), unit) .. pdu
-	return data, transaction
+	local data, trans = self:create_header(transaction, string.len(pdu), unit)
+	return data .. pdu, trans
 end
 
 ---
@@ -71,7 +71,6 @@ function apdu:unpack(buf)
 	assert(transaction, length, unit)
 
 	if buf:len() < self:packsize_header() + length then
-		print('111112222233333')
 		return nil, "not enough data"
 	end
 
