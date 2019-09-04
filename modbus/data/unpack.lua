@@ -113,8 +113,8 @@ end
 
 function data:bit(data, index)
 	-- Keep consistency for index start from 1 as string.sub
-	local index = math.ceil( (index or 1) / 8 )
-	local data = native_unpack.uint8(string.sub(data, index, index))
+	local data_index = math.ceil( (index or 1) / 8 )
+	local data = native_unpack.uint8(string.sub(data, data_index, data_index))
 	local offset = (index - 1) % 8
 
 	if _VERSION == 'Lua 5.1' or _VERSION == 'Lua 5.2' then

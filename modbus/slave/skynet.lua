@@ -107,10 +107,10 @@ end
 function slave:start_connect()
 	if self._opt.link == 'tcp' then
 		local conf = self._opt.tcp
-		skynet.error(string.format("Listen on %s:%d", conf.host, conf.port))
+		skynet.error(string.format("Connect to %s:%d", conf.host, conf.port))
 		local sock, err = socket.listen(conf.host, conf.port)
 		if not sock then
-			return nil, string.format("Cannot listen on %s:%d. err: %s", conf.host, conf.port, err or "")
+			return nil, string.format("Cannot connect on %s:%d. err: %s", conf.host, conf.port, err or "")
 		end
 		self._server_socket = sock
 		socket.start(sock, function(fd, addr)
@@ -144,6 +144,7 @@ function slave:start_connect()
 	if self._opt.link == 'serial' then
 		local opt = self._opt.serial
 		local port = serial:new(opt.port, opt.baudrate or 9600, opt.data_bits or 8, opt.parity or 'NONE', opt.stop_bits or 1, opt.flow_control or "OFF")
+		skynet.error("Open serial port:"..opt.port)
 		local r, err = port:open()
 		if not r then
 			skynet.error("Failed open serial port:"..opt.port..", error: "..err)
