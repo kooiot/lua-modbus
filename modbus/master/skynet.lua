@@ -37,6 +37,7 @@ end
 
 --- Timeout: ms
 function master:request(unit, pdu, timeout)
+	local unit = tonumber(unit)
 	assert(unit and pdu, "Unit and PDU are required!")
 	local apdu_raw, key = assert(self._apdu:pack(unit, pdu))
 	if not apdu_raw then
