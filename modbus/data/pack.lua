@@ -12,7 +12,6 @@ local be_fmts = {
 	uint32 = '>I4',
 	float = '>f',
 	double = '>d',
-	string = '>z',
 }
 
 local le_fmts = {
@@ -24,7 +23,6 @@ local le_fmts = {
 	uint32 = '<I4',
 	float = '<f',
 	double = '<d',
-	string = '<z',
 }
 
 local data_pack = string.pack
