@@ -73,11 +73,23 @@ native_pack.int32 = function(val, le)
 	return _M.uint32(val, le)
 end
 
-native_pack.uint32 = function(val)
+native_pack.int32_r = function(val, le)
+	local val = val + 2147483648
+	return _M.uint32_r(val, le)
+end
+
+native_pack.uint32 = function(val, le)
 	local val = val % 2147483648
-	local hhv, hlv = _M.uint16(math.floor(val / 65536))
-	local lhv, llv = _M.uint16(val % 65536)
+	local hhv, hlv = _M.uint16(math.floor(val / 65536), le)
+	local lhv, llv = _M.uint16(val % 65536, le)
 	return le and string.char(llv, lhv, hlv, hhv) or string.char(hhv, hlv, lhv, llv)
+end
+
+native_pack.uint32_r = function(val, le)
+	local val = val % 2147483648
+	local hhv, hlv = _M.uint16(math.floor(val / 65536), le)
+	local lhv, llv = _M.uint16(val % 65536, le)
+	return le and string.char(hhv, hlv, lhv, llv) or string.char(llv, lhv, hlv, hhv) 
 end
 
 native_pack.float = function(value)
@@ -116,6 +128,16 @@ end
 
 for k, v in pairs(be_fmts) do
 	MAP_FMT(k)
+end
+
+function data:float_r(val)
+	local str = self:float(val)
+	return str:sub(3, 4)..str:sub(1, 2)
+end
+
+function data:double_r(val)
+	local str = self:double(val)
+	return str:sub(7, 8)..str:sub(5, 6)..str:sub(3, 4)..str:sub(1, 2)
 end
 
 function data:bit(...)

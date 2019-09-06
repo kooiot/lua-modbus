@@ -72,11 +72,24 @@ native_unpack.int32 = function (data, index, le)
 	return val
 end
 
+native_unpack.int32_r = function (data, index, le)
+	local val = native_unpack.uint32_r(data, index, le)
+	val = ((val + 1073741824) % 2147483648) - 1073741824
+	return val
+end
+
 native_unpack.uint32 = function (data, index, le)
 	local index = index or 1
 	local hv = native_unpack.uint16(data, index, le)
 	local lv = native_unpack.uint16(data, index + 2, le)
-	return le and lv * 65536 + hv or hv * 65536 + lv 
+	return le and lv * 65536 + hv or hv * 65536 + lv
+end
+
+native_unpack.uint32_r = function (data, index, le)
+	local index = index or 1
+	local hv = native_unpack.uint16(data, index, le)
+	local lv = native_unpack.uint16(data, index + 2, le)
+	return le and hv * 65536 + lv or lv * 65536 + hv
 end
 
 native_unpack.string = function (data, index, le)
@@ -109,6 +122,18 @@ end
 
 for k, v in pairs(be_fmts) do
 	MAP_FMT(k)
+end
+
+function data:float_r = function (data, index)
+	local index = index or 1
+	local r_data = data:sub(index + 2, index + 3)..data:sub(index, index + 1)
+	return data:float(r_data, 1)
+end
+
+function data:double_r = function (data, index)
+	local index = index or 1
+	local r_data = data:sub(index + 6, index + 7)..data:sub(index + 4, index + 5)..data:sub(index + 2, index + 3)..data:sub(index, index + 1)
+	return data:double(r_data, 1)
 end
 
 function data:bit(data, index)
