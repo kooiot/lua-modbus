@@ -122,13 +122,13 @@ for k, v in pairs(be_fmts) do
 	MAP_FMT(k)
 end
 
-function data:float_r = function (data, index)
+function data:float_r(data, index)
 	local index = index or 1
 	local r_data = data:sub(index + 2, index + 3)..data:sub(index, index + 1)
 	return data:float(r_data, 1)
 end
 
-function data:double_r = function (data, index)
+function data:double_r(data, index)
 	local index = index or 1
 	local r_data = data:sub(index + 6, index + 7)..data:sub(index + 4, index + 5)..data:sub(index + 2, index + 3)..data:sub(index, index + 1)
 	return data:double(r_data, 1)
