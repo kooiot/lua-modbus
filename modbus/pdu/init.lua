@@ -54,8 +54,6 @@ end
 
 function pdu:make_req_0x10(fc, addr, ...)
 	local values = {...}
-	local len = #values
-	assert(len > 0, "Values missing")
 
 	local data = {}
 	for _, v in ipairs(values) do
@@ -66,7 +64,10 @@ function pdu:make_req_0x10(fc, addr, ...)
 		end
 	end
 
-	return self._req:pack(fc, addr, len, table.concat(data))
+	local val = table.concat(data)
+	assert(#val % 2 == 0)
+
+	return self._req:pack(fc, addr, #val // 2, val)
 end
 
 function pdu:make_request(fc, ...)

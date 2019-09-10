@@ -57,8 +57,8 @@ function apdu:master_process(callback)
 		local fmt = self._le and '<I1I1' or '>I1I1'
 
 		local recv_unit, recv_fc = string.unpack(fmt, tostring(buf))
-		local err_flag = (recv_fc & 0xF0) == 0x80
-		local func = recv_fc & 0x0F
+		local err_flag = (recv_fc & 0x80) == 0x80
+		local func = recv_fc & 0x7F
 
 		if err_flag then
 			--- Error takes only five bytes
