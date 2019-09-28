@@ -228,6 +228,8 @@ function slave:start()
 			self._apdu_wait = nil
 		end
 	end)
+
+	return true
 end
 
 function slave:stop()
