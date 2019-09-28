@@ -34,7 +34,11 @@ function apdu:unpack(buf)
 		return nil, "No end found!"
 	end
 
-	local pdu = basexx.from_hex(buf:sub(2, index - 1))
+	local pdu, err = basexx.from_hex(buf:sub(2, index - 1))
+	if not pdu then
+		buf:pop(1)
+		return nil, err
+	end
 
 	local checksum = ecm.calc(string.sub(pdu, 1, -2), self._ecm, self._le)
 
@@ -61,7 +65,11 @@ function apdu:current_unit()
 		return nil, "Incorrect packet starter!"
 	end
 
-	local pdu = basexx.from_hex(buf:sub(2))
+	if buf:len() < 3 then
+		return nil, "No enough data"
+	end
+
+	local pdu = basexx.from_hex(buf:sub(2, 3))
 
 	local unit = string.unpack('I1', pdu)
 
