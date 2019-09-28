@@ -202,7 +202,8 @@ function master:process(data)
 	end
 
 	if self._io_cb then
-		self._io_cb('IN', nil, data)
+		local unit = self._apdu:current_unit()
+		self._io_cb('IN', unit, data)
 	end
 end
 

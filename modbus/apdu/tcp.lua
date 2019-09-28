@@ -91,6 +91,20 @@ function apdu:append(data)
 	self._buf:append(data)
 end
 
+function apdu:current_unit()
+	local buf = self._buf
+
+	if buf:len() < self:min_packsize() then
+		print('nil')
+		return nil
+	end
+
+	local transaction, length, unit = self:unpack_header(tostring(buf))
+
+	print(transaction, length, unit)
+	return transaction and unit or nil
+end
+
 function apdu:process(callback)
 	local min_packsize = self:min_packsize()
 	local need_len = nil

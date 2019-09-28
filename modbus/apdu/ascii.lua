@@ -54,6 +54,18 @@ function apdu:append(data)
 	self._buf:append(data)
 end
 
+function apdu:current_unit()
+	local buf = self._buf
+
+	if buf:sub(1, 1) ~= ':' then
+		return nil, "Incorrect packet starter!"
+	end
+
+	local pdu = basexx.from_hex(buf:sub(2))
+
+	return unit = string.unpack('I1', pdu)
+end
+
 function apdu:process(callback)
 	local need_len = nil
 	local buf = self._buf

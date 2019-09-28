@@ -44,6 +44,10 @@ function apdu:append(data)
 	self._buf:append(data)
 end
 
+function apdu:current_unit()
+	return string.unpack(self._header_fmt, tostring(self._buf))
+end
+
 function apdu:master_process(callback)
 	local min_size = 5 -- Error Response
 	local buf = self._buf
