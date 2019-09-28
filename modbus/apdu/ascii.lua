@@ -63,7 +63,9 @@ function apdu:current_unit()
 
 	local pdu = basexx.from_hex(buf:sub(2))
 
-	return unit = string.unpack('I1', pdu)
+	local unit = string.unpack('I1', pdu)
+
+	return unit
 end
 
 function apdu:process(callback)

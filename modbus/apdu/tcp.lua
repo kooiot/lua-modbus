@@ -101,7 +101,6 @@ function apdu:current_unit()
 
 	local transaction, length, unit = self:unpack_header(tostring(buf))
 
-	print(transaction, length, unit)
 	return transaction and unit or nil
 end
 
