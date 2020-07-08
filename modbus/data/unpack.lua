@@ -2,7 +2,7 @@
 -- local basexx = require 'basexx'
 local class = require 'middleclass'
 
-local data = class("Modbus_Data_Unpack_Class")
+local unpacker = class("Modbus_Data_Unpack_Class")
 
 local be_fmts = {
 	int8 = '>i1',
@@ -11,6 +11,8 @@ local be_fmts = {
 	uint16 = '>I2',
 	int32 = '>i4',
 	uint32 = '>I4',
+	int64 = '>i8',
+	uint64 = '>I8',
 	float = '>f',
 	double = '>d',
 }
@@ -22,6 +24,8 @@ local le_fmts = {
 	uint16 = '<I2',
 	int32 = '<i4',
 	uint32 = '<I4',
+	int64 = '<i8',
+	uint64 = '<I8',
 	float = '<f',
 	double = '<d',
 }
@@ -34,7 +38,7 @@ if not data_unpack then
 	end
 end
 
-function data:initialize(little_endian)
+function unpacker:initialize(little_endian)
 	self._le = little_endian
 	self._fmts = self._le and le_fmts or be_fmts
 end
@@ -70,11 +74,13 @@ native_unpack.int32 = function (data, index, le)
 	return val
 end
 
+--[[
 native_unpack.int32_r = function (data, index, le)
 	local val = native_unpack.uint32_r(data, index, le)
 	val = ((val + 1073741824) % 2147483648) - 1073741824
 	return val
 end
+]]--
 
 native_unpack.uint32 = function (data, index, le)
 	local index = index or 1
@@ -83,12 +89,14 @@ native_unpack.uint32 = function (data, index, le)
 	return le and lv * 65536 + hv or hv * 65536 + lv
 end
 
+--[[
 native_unpack.uint32_r = function (data, index, le)
 	local index = index or 1
 	local hv = native_unpack.uint16(data, index, le)
 	local lv = native_unpack.uint16(data, index + 2, le)
 	return le and hv * 65536 + lv or lv * 65536 + hv
 end
+]]--
 
 native_unpack.string = function (data, index, le)
 	local e = string.find(data, string.char(0), index, true)
@@ -106,13 +114,13 @@ native_unpack.double = function (data, index, le)
 	assert(false, "double is not supported!")
 end
 
-function MAP_FMT(fmt)
+local function MAP_FMT(fmt)
 	if data_unpack then
-		data[fmt] = function(self, data, index)
+		unpacker[fmt] = function(self, data, index)
 			return data_unpack(self._fmts[fmt], data, index)
 		end
 	else
-		data[fmt] = function(self, data, index)
+		unpacker[fmt] = function(self, data, index)
 			return native_unpack[fmt](data, index, self._le)
 		end
 	end
@@ -122,37 +130,75 @@ for k, v in pairs(be_fmts) do
 	MAP_FMT(k)
 end
 
-function data:float_r(data, index)
+function unpacker:int32_r(data, index)
 	local index = index or 1
 	local r_data = data:sub(index + 2, index + 3)..data:sub(index, index + 1)
-	return data:float(r_data, 1)
+	local val, ind = self:int32(r_data, 1)
+	assert(ind == 5)
+	return val, index + 4
 end
 
-function data:double_r(data, index)
+function unpacker:uint32_r(data, index)
+	local index = index or 1
+	local r_data = data:sub(index + 2, index + 3)..data:sub(index, index + 1)
+	local val, ind = self:uint32(r_data, 1)
+	assert(ind == 5)
+	return val, index + 4
+end
+
+function unpacker:int64_r(data, index)
 	local index = index or 1
 	local r_data = data:sub(index + 6, index + 7)..data:sub(index + 4, index + 5)..data:sub(index + 2, index + 3)..data:sub(index, index + 1)
-	return data:double(r_data, 1)
+	local val, ind = self:int64(r_data, 1)
+	assert(ind == 9)
+	return val, index + 8
 end
 
-function data:bit(data, index)
+
+function unpacker:uint64_r(data, index)
+	local index = index or 1
+	local r_data = data:sub(index + 6, index + 7)..data:sub(index + 4, index + 5)..data:sub(index + 2, index + 3)..data:sub(index, index + 1)
+	local val, ind = self:uint64(r_data, 1)
+	assert(ind == 9)
+	return val, index + 8
+end
+
+
+function unpacker:float_r(data, index)
+	local index = index or 1
+	local r_data = data:sub(index + 2, index + 3)..data:sub(index, index + 1)
+	local val, ind = self:float(r_data, 1)
+	assert(ind == 5)
+	return val, index + 4
+end
+
+function unpacker:double_r(data, index)
+	local index = index or 1
+	local r_data = data:sub(index + 6, index + 7)..data:sub(index + 4, index + 5)..data:sub(index + 2, index + 3)..data:sub(index, index + 1)
+	local val, ind = self:double(r_data, 1)
+	assert(ind == 9)
+	return val, index + 8
+end
+
+function unpacker:bit(data, index)
 	-- Keep consistency for index start from 1 as string.sub
 	local data_index = math.ceil( (index or 1) / 8 )
-	local data = native_unpack.uint8(string.sub(data, data_index, data_index))
+	local val = native_unpack.uint8(string.sub(data, data_index, data_index))
 	local offset = (index - 1) % 8
 
 	if _VERSION == 'Lua 5.1' or _VERSION == 'Lua 5.2' then
 		local bit32 = require 'bit'
-		return bit32.band(1, bit32.rshift(data, offset))
+		return bit32.band(1, bit32.rshift(val, offset))
 	else
-		return (1 & (data >> (offset)))
+		return (1 & (val >> (offset)))
 	end
 end
 
-function data:raw(data, index, len)
+function unpacker:raw(data, index, len)
 	return string.sub(data, index, index + len)
 end
 
-function data:packsize(name, len)
+function unpacker:packsize(name, len)
 	if name == 'string' then
 		return len
 	end
@@ -162,9 +208,9 @@ function data:packsize(name, len)
 	if len then
 		return len
 	end
-	local len = string.match('%(d+)$')
-	return math.floor(tonumber(len) / 8)
+	local dlen = string.match('%(d+)')
+	return math.floor(tonumber(dlen) / 8)
 end
 
 
-return data
+return unpacker
