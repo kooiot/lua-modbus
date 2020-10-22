@@ -71,6 +71,9 @@ function master:request(unit, pdu, timeout)
 		self._io_cb('OUT', unit, apdu_raw)
 	end
 
+	--local basexx = require 'basexx'
+	--print(os.date(), 'Send request', key)
+	--print(os.date(), 'OUT:', basexx.to_hex(apdu_raw))
 	if self._socket then
 		local r, err = socket.write(self._socket, apdu_raw)
 	else
@@ -90,6 +93,11 @@ function master:request(unit, pdu, timeout)
 	
 	local result = self._results[key] or {false, "Timeout"}
 	self._results[key] = nil
+	if not result[1] then
+		--print(os.date(), 'Request failed', key, table.unpack(result))
+	else
+		--print(os.date(), 'Request done', key)
+	end
 	return table.unpack(result)
 end
 
@@ -196,6 +204,8 @@ function master:start_connect()
 end
 
 function master:process(data)
+	--local basexx = require 'basexx'
+	--print(os.date(), 'IN:', basexx.to_hex(data))
 	self._apdu:append(data)
 	if self._apdu_wait then
 		skynet.wakeup(self._apdu_wait)
@@ -223,6 +233,12 @@ function master:start()
 		while not self._closing do
 			self._apdu:process(function(key, unit, pdu)
 				assert(key)
+				--local basexx= require 'basexx'
+				if unit then
+					--print(os.date(), 'apdu_process_cb', key, unit, basexx.to_hex(pdu))
+				else
+					--print(os.date(), 'apdu_process_cb', key, pdu)
+				end
 				local req_co = self._requests[key]
 				if req_co then
 					local err_flag = false

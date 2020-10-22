@@ -61,6 +61,7 @@ function apdu:master_process(callback)
 		local fmt = self._le and '<I1I1' or '>I1I1'
 
 		local recv_unit, recv_fc = string.unpack(fmt, tostring(buf))
+		--print(os.date(), 'AAAA:', recv_unit, recv_fc)
 		local err_flag = (recv_fc & 0x80) == 0x80
 		local func = recv_fc & 0x7F
 
@@ -97,13 +98,16 @@ function apdu:master_process(callback)
 				end
 			elseif func == 0x03 or func == 0x04 then 
 				local len = string.unpack('I1', buf:sub(3))
+				--print(os.date(), 'LEN', len)
 				if len % 2 == 0 then
 					local adu_len = 3 + len + 2 
 					if adu_len > buf:len() then
 						need_len = adu_len - buf:len()
+						--print(os.date(), 'NEED_LEN', need_len)
 						break
 					end
 
+					--print(os.date(), 'ADU_LEN', adu_len)
 					local unit, pdu = self:unpack(buf:sub(1, adu_len))
 					if unit ~= nil then
 						buf:pop(adu_len)
