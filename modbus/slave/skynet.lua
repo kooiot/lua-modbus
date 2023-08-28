@@ -3,6 +3,7 @@ local skynet = require 'skynet'
 local socket = require 'skynet.socket'
 local socketdriver = require 'skynet.socketdriver'
 local serial = require 'serialdriver'
+local cjson = require 'cjson.safe'
 
 local slave = class("Modbus_Slave_Skynet")
 

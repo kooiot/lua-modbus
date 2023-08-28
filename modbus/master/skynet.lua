@@ -77,6 +77,9 @@ function master:request(unit, pdu, timeout)
 	if self._socket then
 		local r, err = socket.write(self._socket, apdu_raw)
 	else
+		if not self._port then
+			return nil, "Not connected!!"
+		end
 		local r, err = self._port:write(apdu_raw)
 	end
 

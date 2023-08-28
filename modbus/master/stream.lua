@@ -57,9 +57,9 @@ end
 
 function master:run_once(ms)
 	local now = os.time()
-	for k,v in pairs(self._cos) do
+	for k, v in pairs(self._cos) do
 		if v.timeout > now() then
-			callback(nil, "Timeout")
+			v.callback(nil, "Timeout")
 			self._cos[k] = nil
 		end
 	end
