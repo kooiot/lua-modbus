@@ -104,7 +104,7 @@ end
 -- 文件匹配模式
 file = './modbus'
 -- 排除的文件
-exclude = {'test', 'examples'}
+--exclude = {'test', 'examples'}
 
 -- 输出目录
 dir = 'docs'
@@ -126,6 +126,3 @@ LICENSE
 
 -- 自定义样式
 -- template = 'templates/'
-
--- 其他语言支持（中文）
-no_lua_userdata = true
