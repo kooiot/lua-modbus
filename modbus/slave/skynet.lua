@@ -1,3 +1,13 @@
+--- Modbus Skynet 从站模块
+--
+-- 该模块提供基于 Skynet 框架的 Modbus 从站实现。
+-- 支持 TCP 服务器和串口（RTU/ASCII）两种连接方式，自动重连。
+--
+-- @module modbus.slave.skynet
+-- @author [作者名称]
+-- @license MIT
+-- @release $Id$
+
 local class = require 'middleclass'
 local skynet = require 'skynet'
 local socket = require 'skynet.socket'
@@ -5,10 +15,28 @@ local socketdriver = require 'skynet.socketdriver'
 local serial = require 'serialdriver'
 local cjson = require 'cjson.safe'
 
+--- Modbus Skynet 从站类
+--
+-- 实现了 Modbus 从站的基本功能，包括接收请求、发送响应等。
+-- 支持 TCP 服务器和串口连接。
+--
+-- @type Modbus_Slave_Skynet
 local slave = class("Modbus_Slave_Skynet")
 
---- 
--- stream_type: tcp/serial
+--- 初始化 Skynet 从站
+--
+-- @param mode string 传输模式（'tcp', 'rtu', 'ascii'）
+-- @param opt table 配置选项
+-- @param opt.link string 连接类型（'tcp' 或 'serial'）
+-- @param opt.tcp table TCP 配置（host, port, nodelay）
+-- @param opt.serial table 串口配置（port, baudrate, data_bits, parity, stop_bits, flow_control）
+-- @param little_endian boolean 是否使用小端序字节顺序（可选，默认 false）
+-- @usage
+-- local slave = require 'modbus.slave.skynet'
+-- local s = slave:new('tcp', {
+--   link = 'tcp',
+--   tcp = { host = '0.0.0.0', port = 502, nodelay = true }
+-- })
 function slave:initialize(mode, opt, little_endian)
 	local m = nil
 	if string.lower(mode) == 'tcp' then
@@ -31,17 +59,43 @@ function slave:initialize(mode, opt, little_endian)
 	self._callbacks = {}
 end
 
+--- 设置 I/O 回调函数
+--
+-- 用于调试或监控数据收发
+--
+-- @param cb function 回调函数，签名为 function(direction, unit, data)
+-- @usage
+-- s:set_io_cb(function(dir, unit, data)
+--   print(dir, unit, data)
+-- end)
 function slave:set_io_cb(cb)
 	self._io_cb = cb
 end
 
----
--- callback(key, unit, pdu)
+--- 添加一个单元（设备）及其回调处理器
+--
+-- 为指定的单元 ID 注册请求处理回调函数
+--
+-- @param unit number 单元 ID（从站地址）
+-- @param callback function 请求处理回调，签名为 function(pdu, response_handler)
+-- @usage
+-- s:add_unit(1, function(pdu, response_handler)
+--   -- 解析请求 PDU
+--   -- 生成响应 PDU
+--   response_handler(response_pdu)
+-- end)
 function slave:add_unit(unit, callback)
 	assert(callback and not self._callbacks[unit])
 	self._callbacks[unit] = callback
 end
 
+--- 移除一个单元（设备）
+--
+-- 移除指定单元 ID 的请求处理回调
+--
+-- @param unit number 单元 ID（从站地址）
+-- @usage
+-- s:remove_unit(1)
 function slave:remove_unit(unit)
 	self._callbacks[unit] = nil
 end
@@ -184,6 +238,15 @@ function slave:process(data)
 	end
 end
 
+--- 启动从站
+--
+-- 启动服务器并开始处理请求
+--
+-- @return boolean|nil 成功返回 true，失败返回 nil
+-- @return string|nil 错误信息
+-- @usage
+-- local ok, err = s:start()
+-- if not ok then print(err) end
 function slave:start()
 	if self._socket or self._port then
 		return nil, "Already started"
@@ -234,6 +297,12 @@ function slave:start()
 	return true
 end
 
+--- 停止从站
+--
+-- 停止服务器并清理资源
+--
+-- @usage
+-- s:stop()
 function slave:stop()
 	self._closing = true
 	if self._apdu_wait then

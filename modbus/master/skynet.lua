@@ -1,13 +1,41 @@
+--- Modbus Skynet 主站模块
+--
+-- 该模块提供基于 Skynet 框架的 Modbus 主站实现。
+-- 支持 TCP 和串口（RTU/ASCII）两种连接方式，自动重连。
+--
+-- @module modbus.master.skynet
+-- @author [作者名称]
+-- @license MIT
+-- @release $Id$
+
 local class = require 'middleclass'
 local skynet = require 'skynet'
 local socket = require 'skynet.socket'
 local socketdriver = require 'skynet.socketdriver'
 local serial = require 'serialdriver'
 
+--- Modbus Skynet 主站类
+--
+-- 实现了 Modbus 主站的基本功能，包括自动重连、请求管理、超时处理等。
+-- 支持 TCP 和串口连接。
+--
+-- @type Modbus_Master_Skynet
 local master = class("Modbus_Master_Skynet")
 
---- 
--- stream_type: tcp/serial
+--- 初始化 Skynet 主站
+--
+-- @param mode string 传输模式（'tcp', 'rtu', 'ascii'）
+-- @param opt table 配置选项
+-- @param opt.link string 连接类型（'tcp' 或 'serial'）
+-- @param opt.tcp table TCP 配置（host, port, nodelay）
+-- @param opt.serial table 串口配置（port, baudrate, data_bits, parity, stop_bits, flow_control）
+-- @param little_endian boolean 是否使用小端序字节顺序（可选，默认 false）
+-- @usage
+-- local master = require 'modbus.master.skynet'
+-- local m = master:new('tcp', {
+--   link = 'tcp',
+--   tcp = { host = '127.0.0.1', port = 502, nodelay = true }
+-- })
 function master:initialize(mode, opt, little_endian)
 	local m = nil
 	if string.lower(mode) == 'tcp' then
@@ -31,11 +59,35 @@ function master:initialize(mode, opt, little_endian)
 	self._results = {}
 end
 
+--- 设置 I/O 回调函数
+--
+-- 用于调试或监控数据收发
+--
+-- @param cb function 回调函数，签名为 function(direction, unit, data)
+-- @usage
+-- m:set_io_cb(function(dir, unit, data)
+--   print(dir, unit, data)
+-- end)
 function master:set_io_cb(cb)
 	self._io_cb = cb
 end
 
---- Timeout: ms
+--- 发送 Modbus 请求
+--
+-- 发送 Modbus 请求并等待响应（阻塞调用）
+--
+-- @param unit number 设备单元 ID（从站地址）
+-- @param pdu string 协议数据单元（由 modbus.pdu 模块创建）
+-- @param timeout number 超时时间（毫秒）
+-- @return string|nil 响应 PDU 数据
+-- @return string|nil 错误信息
+-- @usage
+-- local pdu = require 'modbus.pdu'
+-- local req = pdu:make_request(0x03, 0, 10)
+-- local resp, err = m:request(1, req, 5000)
+-- if err then
+--   print("请求失败:", err)
+-- end
 function master:request(unit, pdu, timeout)
 	local unit = tonumber(unit)
 	assert(unit and pdu, "Unit and PDU are required!")
@@ -71,9 +123,6 @@ function master:request(unit, pdu, timeout)
 		self._io_cb('OUT', unit, apdu_raw)
 	end
 
-	--local basexx = require 'basexx'
-	--print(os.date(), 'Send request', key)
-	--print(os.date(), 'OUT:', basexx.to_hex(apdu_raw))
 	if self._socket then
 		local r, err = socket.write(self._socket, apdu_raw)
 	else
@@ -93,14 +142,9 @@ function master:request(unit, pdu, timeout)
 	if self._port then
 		self._locked = nil
 	end
-	
+
 	local result = self._results[key] or {false, "Timeout"}
 	self._results[key] = nil
-	if not result[1] then
-		--print(os.date(), 'Request failed', key, table.unpack(result))
-	else
-		--print(os.date(), 'Request done', key)
-	end
 	return table.unpack(result)
 end
 
@@ -221,6 +265,15 @@ function master:process(data)
 end
 
 
+--- 启动主站
+--
+-- 启动连接并开始处理响应数据
+--
+-- @return boolean|nil 成功返回 true，失败返回 nil
+-- @return string|nil 错误信息
+-- @usage
+-- local ok, err = m:start()
+-- if not ok then print(err) end
 function master:start()
 	if self._socket or self._port then
 		return nil, "Already started"
@@ -236,12 +289,6 @@ function master:start()
 		while not self._closing do
 			self._apdu:process(function(key, unit, pdu)
 				assert(key)
-				--local basexx= require 'basexx'
-				if unit then
-					--print(os.date(), 'apdu_process_cb', key, unit, basexx.to_hex(pdu))
-				else
-					--print(os.date(), 'apdu_process_cb', key, pdu)
-				end
 				local req_co = self._requests[key]
 				if req_co then
 					local err_flag = false
@@ -249,7 +296,6 @@ function master:start()
 						local fc = string.unpack('I1', pdu)
 						err_flag = fc & 0x80 ~= 0
 						if err_flag then
-							-- TODO: 
 							self._results[key] = {false, pdu, key}
 						else
 							self._results[key] = {pdu}
@@ -271,6 +317,12 @@ function master:start()
 	return true
 end
 
+--- 停止主站
+--
+-- 停止连接并清理资源
+--
+-- @usage
+-- m:stop()
 function master:stop()
 	self._closing = true
 	if self._apdu_wait then

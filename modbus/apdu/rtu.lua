@@ -1,9 +1,34 @@
+--- Modbus RTU APDU 模块
+--
+-- 该模块实现 Modbus RTU 协议的应用层协议数据单元（APDU）处理。
+-- 提供打包、解包和处理 Modbus RTU 帧的功能，支持主站和从站模式。
+--
+-- @module modbus.apdu.rtu
+-- @author [作者名称]
+-- @license MIT
+-- @release $Id$
+
 local class = require 'middleclass'
 local ecm = require "modbus.ecm"
 local buffer = require 'modbus.buffer'
 
+--- Modbus RTU APDU 类
+--
+-- 实现 Modbus RTU 协议的帧处理，支持主站和从站模式。
+-- 使用 CRC 校验（默认）或 LRC 校验。
+--
+-- @type Modbus_Apdu_RTU_Class
 local apdu = class('Modbus_Apdu_RTU_Class')
 
+--- 初始化 RTU APDU 对象
+--
+-- @param mode string 工作模式（'master' 或 'slave'）
+-- @param little_endian boolean 是否使用小端序字节顺序（可选，默认 false）
+-- @param ecm string 错误校验方法（'CRC' 或 'LRC'，默认 'CRC'）
+-- @usage
+-- local apdu = require 'modbus.apdu.rtu'
+-- local master = apdu:new('master')  -- 主站模式
+-- local slave = apdu:new('slave')   -- 从站模式
 function apdu:initialize(mode, little_endian, ecm)
 	self._mode = mode ~= 'slave' and 'master' or 'slave'
 	self._le = little_endian
@@ -19,18 +44,34 @@ function apdu:initialize(mode, little_endian, ecm)
 	end
 end
 
+--- 打包 RTU APDU
+--
+-- 将 PDU 打包为完整的 Modbus RTU 帧（添加单元 ID 和校验和）
+--
+-- @param unit number 单元 ID（从站地址）
+-- @param pdu string PDU 数据
+-- @return string 完整的 Modbus RTU 帧
+-- @return number 单元 ID
 function apdu:pack(unit, pdu)
 	assert(pdu, "PDU object required!")
 	assert(unit, "Device unit id required!")
 
 	local data = string.pack(self._header_fmt, unit) .. pdu
 	local checknum = ecm.calc(data, self._ecm, self._le)
-	return data .. checknum, unit 
+	return data .. checknum, unit
 end
 
+--- 解包 RTU APDU
+--
+-- 从 Modbus RTU 帧中解包 PDU（验证校验和）
+--
+-- @param data string Modbus RTU 帧数据
+-- @return number|nil 单元 ID
+-- @return string|nil PDU 数据或错误信息
+-- @return number 单元 ID（作为 key）
 function apdu:unpack(data)
 	local unit = string.unpack(self._header_fmt, data)
-	local pdu = string.sub(data, self._header_size + 1, -3) -- skip 
+	local pdu = string.sub(data, self._header_size + 1, -3) -- skip
 	local checknum = ecm.calc(string.sub(data, 1, -3), self._ecm, self._le)
 	if checknum ~= string.sub(data, -2) then
 		--skynet.error("ECM Checking failed!")
@@ -40,17 +81,33 @@ function apdu:unpack(data)
 	return unit, pdu, unit
 end
 
+--- 添加数据到缓冲区
+--
+-- @param data string 接收到的数据
 function apdu:append(data)
 	self._buf:append(data)
 end
 
+--- 获取当前缓冲区的单元 ID
+--
+-- @return number 单元 ID
 function apdu:current_unit()
 	return string.unpack(self._header_fmt, tostring(self._buf))
 end
 
+--- 主站模式处理函数
+--
+-- RTU 主站响应处理，解析缓冲区中的完整帧并调用回调。
+-- 最小包长：5 字节（Unit ID(1) + Func Code(1) + Exception Code(1) + CRC(2)）
+--
+-- @param callback function 回调函数，签名为 function(unit, key, pdu)
+-- @return number|nil 需要的额外字节数
+-- @usage
+-- -- 由 initialize() 自动设置
+-- local need_len = apdu:master_process(function(unit, key, pdu)
+--   print("收到响应:", unit, pdu)
+-- end)
 function apdu:master_process(callback)
-	-- RTU Master 端响应处理
-	-- 最小包长：5 字节（Unit ID(1) + Func Code(1) + Exception Code(1) + CRC(2)）
 	local min_size = 5
 	local buf = self._buf
 
@@ -171,9 +228,19 @@ function apdu:master_process(callback)
 	return need_len or (min_size - buf:len())
 end
 
+--- 从站模式处理函数
+--
+-- RTU 从站请求处理，解析缓冲区中的完整帧并调用回调。
+-- 最小包长：8 字节（Unit ID(1) + Func Code(1) + Addr(2) + Quantity/Value(2) + CRC(2)）
+--
+-- @param callback function 回调函数，签名为 function(unit, key, pdu)
+-- @return number|nil 需要的额外字节数
+-- @usage
+-- -- 由 initialize() 自动设置
+-- local need_len = apdu:slave_process(function(unit, key, pdu)
+--   print("收到请求:", unit, pdu)
+-- end)
 function apdu:slave_process(callback)
-	-- RTU Slave 端请求处理
-	-- 最小包长：8 字节（Unit ID(1) + Func Code(1) + Addr(2) + Quantity/Value(2) + CRC(2)）
 	local min_size = 8
 	local buf = self._buf
 
