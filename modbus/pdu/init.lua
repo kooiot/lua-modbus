@@ -67,7 +67,7 @@ function pdu:make_req_0x10(fc, addr, ...)
 	local val = table.concat(data)
 	assert(#val % 2 == 0)
 
-	return self._req:pack(fc, addr, #val // 2, val)
+	return self._req:pack(fc, addr, math.floor(#val / 2), val)
 end
 
 function pdu:make_request(fc, ...)
@@ -87,19 +87,19 @@ function pdu:make_resp_error(fc, errno)
 	return string.pack('I1I1', 0x80 + fc, errno)
 end
 
-function pdu:make_resp_0x01(fc, ...)
+function pdu:make_resp_0x01(fc, addr, ...)
 	local data = self._data_pack:bit(...)
 
-	return self._resp:pack(fc, table.concat(data))
+	return self._resp:pack(fc, addr, table.concat(data))
 end
 
-function pdu:make_resp_0x02(fc, ...)
+function pdu:make_resp_0x02(fc, addr, ...)
 	local data = self._data_pack:bit(...)
 
-	return self._resp:pack(fc, table.concat(data))
+	return self._resp:pack(fc, addr, table.concat(data))
 end
 
-function pdu:make_resp_0x03(fc, ...)
+function pdu:make_resp_0x03(fc, addr, ...)
 	local values = {...}
 	local len = #values
 	assert(len > 0, "Values missing")
@@ -116,7 +116,7 @@ function pdu:make_resp_0x03(fc, ...)
 	return self._resp:pack(fc, addr, table.concat(data))
 end
 
-function pdu:make_resp_0x04(fc, ...)
+function pdu:make_resp_0x04(fc, addr, ...)
 	local values = {...}
 	local len = #values
 	assert(len > 0, "Values missing")
@@ -149,20 +149,21 @@ function pdu:make_resp_0x10(fc, addr, len)
 	return self._resp:pack(fc, addr, len)
 end
 
-function pdu:make_response(fc, ...)
+function pdu:make_response(fc, addr, ...)
 	assert(fc, "Function Code is required!!")
+	assert(addr, "Address is required!!")
 
 	local fc = tonumber(fc) or code[fc]
 	local err_flag = fc & 0xF0 == 0x80
 	fc = fc & 0x0F
 
 	if err_flag then
-		return self:make_resp_error(fc, ...)
+		return self:make_resp_error(fc, addr, ...)
 	end
 
-	local func = self['make_resp_0x'..string.format("02X", fc)]
+	local func = self['make_resp_0x'..string.format("%02X", fc)]
 	if func then
-		return func(fc, ...)
+		return func(fc, addr, ...)
 	else
 		return nil, "Function code not supported!!"
 	end

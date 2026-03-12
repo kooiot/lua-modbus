@@ -195,7 +195,7 @@ function unpacker:bit(data, index)
 end
 
 function unpacker:raw(data, index, len)
-	return string.sub(data, index, index + len)
+	return string.sub(data, index, index + len - 1)
 end
 
 function unpacker:packsize(name, len)
@@ -208,8 +208,9 @@ function unpacker:packsize(name, len)
 	if len then
 		return len
 	end
-	local dlen = string.match('%(d+)')
-	return math.floor(tonumber(dlen) / 8)
+	local dlen = tonumber(string.match(name, '(%d+)'))
+	assert(dlen, 'not found length from format anem')
+	return math.floor(dlen / 8)
 end
 
 

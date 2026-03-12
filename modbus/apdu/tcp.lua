@@ -17,17 +17,15 @@ end
 function apdu:initialize(little_endian)
 	self._le = little_endian
 	self._header_fmt = self._le and '<I2I2I2I1' or '>I2I2I2I1'
-	self._transaction_map = {}
+	-- self._transaction_map = {}
 	self._buf = buffer:new(1024)
 end
 
 function apdu:create_header(transaction, length, unit)
 	local transaction = transaction ~= nil and transaction or ((self._transaction_map[unit] or 0) + 1)
-	if transaction > 0xFFFF then
-		transaction = 0
-	end
+	transaction = transaction % 0x10000
 
-	self._transaction_map[unit] = transaction
+	-- self._transaction_map[unit] = transaction
 
 	return string.pack(self._header_fmt, transaction, 0, length + 1, unit), transaction
 end
@@ -68,7 +66,7 @@ function apdu:unpack(buf)
 	if not transaction then
 		return nil, length
 	end
-	assert(transaction, length, unit)
+	assert(transaction and length and unit)
 
 	if buf:len() < self:packsize_header() + length then
 		return nil, "not enough data"
@@ -95,7 +93,7 @@ function apdu:current_unit()
 	local buf = self._buf
 
 	if buf:len() < self:min_packsize() then
-		print('nil')
+		-- print('nil')
 		return nil
 	end
 
@@ -113,7 +111,7 @@ function apdu:process(callback)
 		--- Start from index 3
 		local pid_index = buf:find('\0\0', 3, true)
 		if not pid_index then
-			buf:pop(-3)
+			buf:pop(buf:len() - 3)
 			break
 		end
 

@@ -23,7 +23,7 @@ local function packsize_len_data(raw)
 	if not raw then
 		return 3
 	else
-		local fc, len = string.unpack('>I1I1')
+		local fc, len = string.unpack('>I1I1', raw)
 		return len + 2
 	end
 end
@@ -77,8 +77,13 @@ UNPACK_MAP[0x06] = unpack_addr_data
 UNPACK_MAP[0x0F] = unpack_addr_len
 UNPACK_MAP[0x10] = unpack_addr_len
 
+UNPACK_MAP[0x80] = unpack_addr_len
+
 function response:unpack(pdu)
 	local fc = string.unpack('>I1', pdu)
+	if fc & 0xF0 == 0x80 then
+		fc = 0x80
+	end
 	local func = UNPACK_MAP[fc]
 	if not func then
 		return nil, "Function code not supported"
@@ -105,7 +110,7 @@ PACK_MAP[0x10] = pack_addr_len
 
 function response:pack(fc, ...)
 	local func = PACK_MAP[fc]
-	assert(func, "Request code "..fc.." not supported")
+	assert(func, "Response code "..fc.." not supported")
 	return func(self._le, fc, ...)
 end
 

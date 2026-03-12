@@ -44,7 +44,8 @@ end
 function master:_process(unit, pdu, key)
 	assert(key)
 	if not unit then
-		print(pdu, key)
+		-- print(pdu, key)
+		assert(false, pdu, key)
 	end
 
 	local co = self._cos[key]
@@ -53,12 +54,13 @@ function master:_process(unit, pdu, key)
 	end
 
 	co.callback(unit, pdu, key)
+	self._cos[key] = nil
 end
 
 function master:run_once(ms)
 	local now = os.time()
 	for k, v in pairs(self._cos) do
-		if v.timeout > now() then
+		if v.timeout <= now then
 			v.callback(nil, "Timeout")
 			self._cos[k] = nil
 		end

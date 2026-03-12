@@ -78,7 +78,7 @@ function apdu:master_process(callback)
 		else
 			if func == 0x01 or func == 0x02 then
 				local len = string.unpack('I1', buf:sub(3))
-				if len < math.ceil(2000 / 8) then
+				if len <= math.ceil(2000 / 8) then
 					local adu_len = 3 + len + 2 
 					if adu_len > buf:len() then
 						need_len = adu_len - buf:len()
@@ -135,7 +135,10 @@ function apdu:master_process(callback)
 					callback(recv_unit, nil, pdu)
 				end
 			elseif func == 0x0F or func == 0x10 then
-				local adu_len = 2 + 4 + 2 
+				-- Write Multiple Coils (0x0F) and Write Multiple Registers (0x10)
+				-- Response format: [Unit ID(1)] [Func Code(1)] [Starting Addr(2)] [Quantity(2)] [CRC(2)]
+				-- Total fixed length: 8 bytes (no data payload in response)
+				local adu_len = 8
 				if adu_len > buf:len() then
 					need_len = adu_len - buf:len()
 					break
@@ -187,22 +190,26 @@ function apdu:slave_process(callback)
 				callback(recv_unit, nil, pdu)
 			end
 		elseif fc == 0x0F or fc == 0x10 then
+			-- Write Multiple Coils (0x0F) and Write Multiple Registers (0x10) Request
+			-- Request format: [Unit ID(1)] [Func Code(1)] [Addr(2)] [Quantity(2)] [Byte Count(1)] [Data(N)] [CRC(2)]
+			-- Minimum header size: 8 bytes (without data payload)
 			if buf:len() < 8 then
 				need_len = 8 - buf:len()
 				break
 			end
 
-			local fmt = self._le and '<I2I1' or '<I2I1'
+			local fmt = self._le and '<I2I1' or '>I2I1'
 			local len, count = string.unpack(fmt, buf:sub(5))
 			local cc = fc == 0x0F and math.ceil(len / 8) or len * 2
 			if count == cc then
+				-- Calculate full request length: 2(header) + 4(addr+quantity) + 1(byte count) + count(data) + 2(crc)
 				local adu_len = 2 + 4 + 1 + count + 2
 				if adu_len > buf:len() then
 					need_len = adu_len - buf:len()
 					break
 				end
 
-				local unit, pdu = self:unpack(buf:sub(1, aud_len))
+				local unit, pdu = self:unpack(buf:sub(1, adu_len))
 				if unit ~= nil then
 					buf:pop(adu_len)
 					callback(unit, unit, pdu)

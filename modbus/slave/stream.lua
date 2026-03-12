@@ -18,6 +18,7 @@ function slave:initialize(mode, stream, little_endian)
 	end
 	self._buf = ''
 	self._stream = stream
+	self._callbacks = {}
 end
 
 function slave:add_unit(unit, callback)
@@ -39,7 +40,7 @@ function slave:_process(key, unit, pdu)
 
 	local callback = self._callbacks[unit]
 	if callback then
-		cb(pdu, function(pdu)
+		callback(pdu, function(pdu)
 			local apdu_raw, key = assert(self._apdu:pack(unit, pdu, key))
 			if not apdu_raw then
 				return nil, key
@@ -53,14 +54,6 @@ function slave:_process(key, unit, pdu)
 end
 
 function slave:run_once(ms)
-	local now = os.time()
-	for k,v in pairs(self._cos) do
-		if v.timeout > now() then
-			callback(nil, "Timeout")
-			self._cos[k] = nil
-		end
-	end
-
 	local buf, need_len = self._apdu:process(self._buf, function(key, unit, pdu)
 			self:_process(key, unit, pdu)
 	end)

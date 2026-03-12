@@ -125,7 +125,7 @@ native_pack.double = function(value)
 end
 
 native_pack.string = function(value)
-	return tostring(value) + string.char(0)
+	return tostring(value) .. string.char(0)
 end
 
 local function MAP_FMT(fmt)
