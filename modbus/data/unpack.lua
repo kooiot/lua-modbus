@@ -70,6 +70,8 @@ end
 
 native_unpack.int32 = function (data, index, le)
 	local val = native_unpack.uint32(data, index, le)
+	-- 将无符号32位整数转换为有符号整数（处理二进制补码）
+	-- 范围：-2147483648 到 2147483647
 	val = ((val + 1073741824) % 2147483648) - 1073741824
 	return val
 end
@@ -181,12 +183,15 @@ function unpacker:double_r(data, index)
 end
 
 function unpacker:bit(data, index)
-	-- Keep consistency for index start from 1 as string.sub
+	-- 从字节中提取单个位（index 从 1 开始）
+	-- 返回值：0 或 1
 	local data_index = math.ceil( (index or 1) / 8 )
 	local val = native_unpack.uint8(string.sub(data, data_index, data_index))
 	local offset = (index - 1) % 8
 
+	-- Lua 5.3+ 支持原生位运算，5.1/5.2 需要使用 bit 库
 	if _VERSION == 'Lua 5.1' or _VERSION == 'Lua 5.2' then
+		-- 注意：如果环境中没有 'bit' 库会报错，需要提前检查
 		local bit32 = require 'bit'
 		return bit32.band(1, bit32.rshift(val, offset))
 	else
@@ -199,6 +204,7 @@ function unpacker:raw(data, index, len)
 end
 
 function unpacker:packsize(name, len)
+	-- 根据格式名称计算数据类型的字节大小
 	if name == 'string' then
 		return len
 	end
@@ -208,8 +214,9 @@ function unpacker:packsize(name, len)
 	if len then
 		return len
 	end
+	-- 从格式名称中提取位数（如 'int16' -> 16）
 	local dlen = tonumber(string.match(name, '(%d+)'))
-	assert(dlen, 'not found length from format anem')
+	assert(dlen, 'not found length from format name')
 	return math.floor(dlen / 8)
 end
 

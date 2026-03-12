@@ -16,35 +16,50 @@ function pdu:initialize(little_endian)
 end
 
 function pdu:make_req_0x01(fc, addr, len)
+	-- Read Coils: 读取线圈状态
+	-- len: 线圈数量 (1-2000)
 	assert(len < 2000 and len > 0, "Invalid quantity(length)")
 	return self._req:pack(fc, addr, len)
 end
 
 function pdu:make_req_0x02(fc, addr, len)
+	-- Read Discrete Inputs: 读取离散输入状态
+	-- len: 输入数量 (1-2000)
 	assert(len < 2000 and len > 0, "Invalid quantity(length)")
 	return self._req:pack(fc, addr, len)
 end
 
 function pdu:make_req_0x03(fc, addr, len)
+	-- Read Holding Registers: 读取保持寄存器
+	-- len: 寄存器数量 (1-125，最多 250 字节)
 	assert(len < 125 and len > 0, "Invalid quantity(length)")
 	return self._req:pack(fc, addr, len)
 end
 
 function pdu:make_req_0x04(fc, addr, len)
+	-- Read Input Registers: 读取输入寄存器
+	-- len: 寄存器数量 (1-125，最多 250 字节)
 	assert(len < 125 and len > 0, "Invalid quantity(length)")
 	return self._req:pack(fc, addr, len)
 end
 
 function pdu:make_req_0x05(fc, addr, value)
+	-- Write Single Coil: 写单个线圈
+	-- value: true/0xFF00 (ON) 或 false/0x0000 (OFF)
 	local val = (value == true or tonumber(value) == 1) and 0xFF00 or 0x0000
 	return self._req:pack(fc, addr, val)
 end
 
 function pdu:make_req_0x06(fc, addr, value)
+	-- Write Single Register: 写单个寄存器
+	-- value: 16 位寄存器值
 	return self._req:pack(fc, addr, value)
 end
 
 function pdu:make_req_0x0F(fc, addr, ...)
+	-- Write Multiple Coils: 写多个线圈
+	-- addr: 起始地址
+	-- ...: 线圈值列表 (true/false 或 0/1)
 	local values = {...}
 	local len = #values
 	local data = self._data_pack:bit(values)
@@ -53,6 +68,9 @@ function pdu:make_req_0x0F(fc, addr, ...)
 end
 
 function pdu:make_req_0x10(fc, addr, ...)
+	-- Write Multiple Registers: 写多个寄存器
+	-- addr: 起始地址
+	-- ...: 寄存器值列表（每个值会被编码为 2 字节）
 	local values = {...}
 
 	local data = {}
@@ -60,12 +78,13 @@ function pdu:make_req_0x10(fc, addr, ...)
 		if type(v) == 'number' then
 			table.insert(data, self._data_pack:uint16(v))
 		else
+			-- 支持预编码的字符串
 			table.insert(data, tostring(v))
 		end
 	end
 
 	local val = table.concat(data)
-	assert(#val % 2 == 0)
+	assert(#val % 2 == 0, "Register data length must be even")
 
 	return self._req:pack(fc, addr, math.floor(#val / 2), val)
 end

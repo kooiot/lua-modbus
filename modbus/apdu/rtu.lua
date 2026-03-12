@@ -49,7 +49,9 @@ function apdu:current_unit()
 end
 
 function apdu:master_process(callback)
-	local min_size = 5 -- Error Response
+	-- RTU Master 端响应处理
+	-- 最小包长：5 字节（Unit ID(1) + Func Code(1) + Exception Code(1) + CRC(2)）
+	local min_size = 5
 	local buf = self._buf
 
 	if buf:len() < min_size then
@@ -61,25 +63,30 @@ function apdu:master_process(callback)
 		local fmt = self._le and '<I1I1' or '>I1I1'
 
 		local recv_unit, recv_fc = string.unpack(fmt, tostring(buf))
-		--print(os.date(), 'AAAA:', recv_unit, recv_fc)
+		-- 检查是否为异常响应（功能码最高位为1）
 		local err_flag = (recv_fc & 0x80) == 0x80
 		local func = recv_fc & 0x7F
 
 		if err_flag then
-			--- Error takes only five bytes
+			--- 异常响应固定 5 字节：[Unit ID(1)] [Error Code(1)] [Exception Code(1)] [CRC(2)]
 			local unit, pdu = self:unpack(buf:sub(1, 5))
 			if unit ~= nil then
 				buf:pop(5)
 				callback(unit, unit, pdu)
 			else
+				-- CRC 校验失败，跳过 1 字节继续同步
 				buf:pop(1)
 				callback(recv_unit, nil, pdu)
 			end
 		else
+			-- 正常响应处理
 			if func == 0x01 or func == 0x02 then
+				-- Read Coils (0x01) / Read Discrete Inputs (0x02)
+				-- 响应：[Unit ID(1)] [Func Code(1)] [Byte Count(1)] [Coils(N)] [CRC(2)]
 				local len = string.unpack('I1', buf:sub(3))
+				-- Modbus 规范：最多读取 2000 个 coils，即最多 250 字节
 				if len <= math.ceil(2000 / 8) then
-					local adu_len = 3 + len + 2 
+					local adu_len = 3 + len + 2
 					if adu_len > buf:len() then
 						need_len = adu_len - buf:len()
 						break
@@ -94,20 +101,21 @@ function apdu:master_process(callback)
 						callback(recv_unit, nil, pdu)
 					end
 				else
+					-- 长度超出规范，跳过 1 字节重新同步
 					buf:pop(1)
 				end
-			elseif func == 0x03 or func == 0x04 then 
+			elseif func == 0x03 or func == 0x04 then
+				-- Read Holding Registers (0x03) / Read Input Registers (0x04)
+				-- 响应：[Unit ID(1)] [Func Code(1)] [Byte Count(1)] [Registers(N*2)] [CRC(2)]
 				local len = string.unpack('I1', buf:sub(3))
-				--print(os.date(), 'LEN', len)
+				-- 寄存器数据必须是偶数字节（每个寄存器 2 字节）
 				if len % 2 == 0 then
-					local adu_len = 3 + len + 2 
+					local adu_len = 3 + len + 2
 					if adu_len > buf:len() then
 						need_len = adu_len - buf:len()
-						--print(os.date(), 'NEED_LEN', need_len)
 						break
 					end
 
-					--print(os.date(), 'ADU_LEN', adu_len)
 					local unit, pdu = self:unpack(buf:sub(1, adu_len))
 					if unit ~= nil then
 						buf:pop(adu_len)
@@ -117,10 +125,13 @@ function apdu:master_process(callback)
 						callback(recv_unit, nil, pdu)
 					end
 				else
+					-- 长度异常（非偶数），跳过 1 字节重新同步
 					buf:pop(1)
 				end
 			elseif func == 0x05 or func == 0x06 then
-				local adu_len = 2 + 4 + 2 
+				-- Write Single Coil (0x05) / Write Single Register (0x06)
+				-- 响应：[Unit ID(1)] [Func Code(1)] [Addr(2)] [Value/Output(2)] [CRC(2)]
+				local adu_len = 8
 				if adu_len > buf:len() then
 					need_len = adu_len - buf:len()
 					break
@@ -161,6 +172,8 @@ function apdu:master_process(callback)
 end
 
 function apdu:slave_process(callback)
+	-- RTU Slave 端请求处理
+	-- 最小包长：8 字节（Unit ID(1) + Func Code(1) + Addr(2) + Quantity/Value(2) + CRC(2)）
 	local min_size = 8
 	local buf = self._buf
 
@@ -175,7 +188,10 @@ function apdu:slave_process(callback)
 
 		local need_len = nil
 		if fc == 0x01 or fc == 0x02 or fc == 0x03 or fc == 0x04 or fc == 0x05 or fc == 0x06 then
-			local adu_len = 2 + 4 + 2 
+			-- 简单请求（固定 8 字节）：
+			-- - Read: [Unit ID(1)] [Func Code(1)] [Addr(2)] [Quantity(2)] [CRC(2)]
+			-- - Write Single: [Unit ID(1)] [Func Code(1)] [Addr(2)] [Value(2)] [CRC(2)]
+			local adu_len = 8
 			if adu_len > buf:len() then
 				need_len = adu_len - buf:len()
 				break
@@ -186,6 +202,7 @@ function apdu:slave_process(callback)
 				buf:pop(adu_len)
 				callback(unit, unit, pdu)
 			else
+				-- CRC 校验失败，跳过 1 字节重新同步
 				buf:pop(1)
 				callback(recv_unit, nil, pdu)
 			end

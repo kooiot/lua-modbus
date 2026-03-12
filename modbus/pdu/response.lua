@@ -80,8 +80,12 @@ UNPACK_MAP[0x10] = unpack_addr_len
 UNPACK_MAP[0x80] = unpack_addr_len
 
 function response:unpack(pdu)
+	-- 解析 PDU 响应
+	-- 支持正常响应和异常响应（0x8x）
 	local fc = string.unpack('>I1', pdu)
 	if fc & 0xF0 == 0x80 then
+		-- 异常响应：所有 0x8x 功能码统一处理为 0x80
+		-- 格式：[Error Code(1)] [Exception Code(1)]
 		fc = 0x80
 	end
 	local func = UNPACK_MAP[fc]
@@ -89,9 +93,12 @@ function response:unpack(pdu)
 		return nil, "Function code not supported"
 	end
 
-	--- return fc, data
-	--- return fc, addr, data
-	--- return fc, addr, len
+	--- 正常响应返回：
+	--- - 0x01/0x02: fc, byte_count, data
+	--- - 0x05/0x06: fc, addr, value
+	--- - 0x0F/0x10: fc, addr, quantity
+	--- 异常响应返回：
+	--- - 0x80: fc, addr, exception_code
 	return func(self._le, pdu)
 end
 

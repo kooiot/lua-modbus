@@ -71,6 +71,9 @@ native_pack.uint16 = function(val, le)
 end
 
 native_pack.int32 = function(val, le)
+	-- 将有符号32位整数转换为无符号表示（二进制补码）
+	-- 范围：-2147483648 到 2147483647
+	-- 注意：对边界值 -2147483648 的处理依赖于 Lua 的数值精度
 	local val = val + 0xFFFFFFFF + 1
 	return native_pack.uint32(val, le)
 end

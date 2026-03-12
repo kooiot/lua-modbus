@@ -22,7 +22,10 @@ function slave:initialize(mode, stream, little_endian)
 end
 
 function slave:add_unit(unit, callback)
-	assert(callback and not self._callbacks[unit])
+	-- 添加一个单元（设备）及其回调处理器
+	-- unit: 单元 ID
+	-- callback: 请求处理回调 function(pdu, response_handler)
+	assert(callback and not self._callbacks[unit], "Unit callback already exists or callback is nil!")
 	self._callbacks[unit] = callback
 end
 
@@ -54,6 +57,10 @@ function slave:_process(key, unit, pdu)
 end
 
 function slave:run_once(ms)
+	-- 执行一次从站处理循环
+	-- 1. 处理缓冲区中的请求
+	-- 2. 接收新的请求数据
+	-- ms: 接收超时时间（毫秒）
 	local buf, need_len = self._apdu:process(self._buf, function(key, unit, pdu)
 			self:_process(key, unit, pdu)
 	end)

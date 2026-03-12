@@ -103,19 +103,26 @@ function apdu:current_unit()
 end
 
 function apdu:process(callback)
+	-- TCP APDU 处理循环
+	-- MBAP Header: [Transaction ID(2)] [Protocol ID(2)] [Length(2)] [Unit ID(1)]
+	-- Protocol ID 必须为 0x0000
 	local min_packsize = self:min_packsize()
 	local need_len = nil
 	local buf = self._buf
 
 	while buf:len() >= min_packsize do
-		--- Start from index 3
+		-- 从索引 3 开始查找协议标识符 0x0000
+		-- 这用于同步到正确的帧起始位置
 		local pid_index = buf:find('\0\0', 3, true)
 		if not pid_index then
+			-- 未找到协议标识符，保留最后 3 字节（可能是部分 Protocol ID）
 			buf:pop(buf:len() - 3)
 			break
 		end
 
 		if pid_index > 3 then
+			-- 找到了协议标识符，但不在位置 3，说明前面有无效数据
+			-- 移除无效数据，保留从 Protocol ID 开始的数据
 			buf:pop(pid_index - 3)
 		end
 
@@ -127,7 +134,7 @@ function apdu:process(callback)
 		if unit then
 			callback(transaction, unit, pdu)
 		else
-			need_len = 1 -- at less one byte more
+			need_len = 1 -- 至少还需要 1 字节
 			break
 		end
 	end
