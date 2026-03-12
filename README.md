@@ -6,6 +6,8 @@
 [![Lua](https://img.shields.io/badge/Lua-5.1%2B-blue.svg)](https://www.lua.org/)
 [![LDoc](https://img.shields.io/badge/docs-lDoc-green.svg)](docs/)
 
+中文 | [English](README_EN.md)
+
 ## 特性
 
 - **支持 Modbus TCP、RTU 和 ASCII 协议**
